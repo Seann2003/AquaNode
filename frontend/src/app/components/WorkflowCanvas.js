@@ -44,8 +44,9 @@ export default function WorkflowCanvas({
           </div>
         </div>
       ) : (
-        <div className="p-8">
-          {blocks.map((block, index) => (
+        <div className="p-8 flex flex-col items-center min-h-full">
+          <div className="w-full max-w-2xl">
+            {blocks.map((block, index) => (
             <div key={block.id}>
               <WorkflowBlock
                 block={block}
@@ -63,6 +64,7 @@ export default function WorkflowCanvas({
               )}
             </div>
           ))}
+          </div>
         </div>
       )}
     </div>

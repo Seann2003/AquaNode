@@ -1,6 +1,6 @@
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
-import Navigation from "./components/Navigation";
+import ConditionalNavigation from "./components/ConditionalNavigation";
 import PrivyProvider from "./components/PrivyProvider";
 
 const geistSans = Geist({
@@ -26,10 +26,8 @@ export default function RootLayout({ children }) {
       >
         <PrivyProvider>
           <div className="min-h-screen bg-background text-foreground">
-            <Navigation />
-            <main className="pt-16">
-              {children}
-            </main>
+            <ConditionalNavigation />
+            {children}
           </div>
         </PrivyProvider>
       </body>

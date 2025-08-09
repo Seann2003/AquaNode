@@ -309,14 +309,14 @@ function BuilderContent() {
   }
 
   return (
-    <div className="h-screen bg-background flex">
+    <div className="h-screen bg-background pt-16 flex">
       <DndContext
         sensors={sensors}
         onDragStart={handleDragStart}
         onDragEnd={handleDragEnd}
       >
-        {/* Block Palette - fixed left sidebar */}
-        <div className="w-80 bg-card border-r border-border fixed left-0 top-16 h-[calc(100vh-4rem)] z-30 flex flex-col">
+        {/* Block Palette - sticky left sidebar */}
+        <div className="w-80 bg-card border-r border-border fixed left-0 top-16 h-[calc(100vh-4rem)] z-10 flex flex-col">
           <div className="p-4 border-b border-border">
             <div className="flex items-center justify-between mb-2">
               <h2 className="text-lg font-semibold text-foreground">Blocks</h2>
@@ -334,11 +334,11 @@ function BuilderContent() {
           <BlockPalette blockTypes={blockTypes} />
         </div>
 
-        {/* Main Canvas Area (offset for fixed sidebars) */}
+        {/* Main Canvas Area - with proper margins for sticky sidebars */}
         <div className={`flex-1 flex flex-col min-h-0 ml-80${selectedBlock ? ' mr-80' : ''}`}>
-          {/* Toolbar */}
-          <div className="h-18 bg-card border-b border-border flex items-center justify-between px-6 sticky top-16 z-20">
-            <div className="flex items-center space-x-4">
+          {/* Toolbar - sticky to top */}
+          <div className="h-16 bg-card border-b border-border flex items-center justify-between px-6 sticky top-16 z-0 flex-shrink-0">
+            <div className="flex items-center space-x-4 pl-80">
               <input
                 type="text"
                 value={workflowName}
@@ -368,7 +368,7 @@ function BuilderContent() {
           </div>
 
           {/* Canvas */}
-          <div className="flex-1 relative">
+          <div className="flex-1 relative pl-80">
             <WorkflowCanvas
               blocks={workflowBlocks}
               onBlockSelect={handleBlockSelect}
@@ -379,9 +379,9 @@ function BuilderContent() {
           </div>
         </div>
 
-        {/* Configuration Panel - fixed right sidebar, shown on selection */}
+        {/* Configuration Panel - sticky right sidebar, shown on selection */}
         {selectedBlock && (
-          <div className="w-80 bg-card border-l border-border fixed right-0 top-16 h=[calc(100vh-4rem)] h-[calc(100vh-4rem)] z-30 flex flex-col overflow-y-auto">
+          <div className="w-80 bg-card border-l border-border fixed right-0 top-16 h-[calc(100vh-4rem)] z-20 flex flex-col overflow-y-auto">
             <BlockConfigPanel
               block={selectedBlock}
               onUpdate={(updates) => handleBlockUpdate(selectedBlock.id, updates)}
