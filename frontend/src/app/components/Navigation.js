@@ -12,7 +12,7 @@ export default function Navigation() {
   const { wallets } = useWallets();
 
   const navItems = [
-    { href: '/', label: 'Workflows', icon: Waves },
+    { href: '/workflow', label: 'Workflows', icon: Waves },
     { href: '/builder', label: 'Create', icon: Plus },
   ];
 
@@ -21,7 +21,7 @@ export default function Navigation() {
       <div className="w-full mx-auto px-4 sm:px-6 lg:px-10">
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
-          <Link href="/" className="flex items-center space-x-2">
+          <Link href="/workflow" className="flex items-center space-x-2">
             <Image src="/long-aquanode-logo.svg" alt="AquaNode" width={180} height={50} />
           </Link>
 

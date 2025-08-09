@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, use as useAwait } from 'react';
 import Link from 'next/link';
 import { 
   Play, 
@@ -17,7 +17,7 @@ import {
 } from 'lucide-react';
 import { blockTypes } from '../../builder/page';
 import { usePrivy } from '@privy-io/react-auth';
-import { getWorkflow as lsGetWorkflow } from '../../services/localWorkflowService';
+import { getWorkflow as lsGetWorkflow, upsertWorkflow as lsUpsertWorkflow } from '../../services/localWorkflowService';
 import { ChainBadge } from '../../components/ChainLogo';
 
 // Mock workflow data
@@ -86,33 +86,45 @@ const mockWorkflowData = {
 
 export default function WorkflowPage({ params }) {
   const { authenticated, user } = usePrivy();
+  const { id } = useAwait(params);
   const [workflow, setWorkflow] = useState(null);
   const [isRunning, setIsRunning] = useState(false);
   const [activeTab, setActiveTab] = useState('overview');
+  const [editableName, setEditableName] = useState('');
+  const [editableDescription, setEditableDescription] = useState('');
+  const [autoRun, setAutoRun] = useState(false);
 
   const fetchWorkflow = useCallback(async () => {
     try {
       const userId = user?.wallet?.address || user?.id || 'anonymous';
-      const local = lsGetWorkflow(userId, params.id);
+      const local = lsGetWorkflow(userId, id);
       if (local) setWorkflow(local);
-      else setWorkflow(mockWorkflowData[params.id] || null);
+      else setWorkflow(mockWorkflowData[id] || null);
     } catch (error) {
       console.error('Error fetching workflow:', error);
       const userId = user?.wallet?.address || user?.id || 'anonymous';
-      setWorkflow(lsGetWorkflow(userId, params.id) || mockWorkflowData[params.id] || null);
+      setWorkflow(lsGetWorkflow(userId, id) || mockWorkflowData[id] || null);
     }
-  }, [params.id, authenticated, user]);
+  }, [id, user]);
 
   useEffect(() => {
     fetchWorkflow();
   }, [fetchWorkflow]);
+
+  useEffect(() => {
+    if (workflow) {
+      setEditableName(workflow.name || '');
+      setEditableDescription(workflow.description || '');
+      setAutoRun(workflow.status === 'active');
+    }
+  }, [workflow]);
 
   const handleToggleWorkflow = async () => {
     setIsRunning(true);
     try {
       const newStatus = workflow.status === 'active' ? 'paused' : 'active';
       
-      const response = await fetch(`/api/workflows/${params.id}`, {
+      const response = await fetch(`/api/workflows/${id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -140,16 +152,43 @@ export default function WorkflowPage({ params }) {
   };
 
   const handleRunOnce = async () => {
+    if (!workflow) return;
     setIsRunning(true);
+    const startMs = Date.now();
     try {
-      // TODO: Implement actual workflow execution
-      // For now, just simulate execution
+      // Simulate execution, then record a history entry and persist to localStorage
       setTimeout(() => {
-        setWorkflow(prev => ({
-          ...prev,
-          lastRun: 'just now',
-          totalRuns: (prev.totalRuns || 0) + 1
-        }));
+        const durationSeconds = ((Date.now() - startMs) / 1000).toFixed(1) + 's';
+        const newHistoryEntry = {
+          timestamp: new Date().toLocaleString(),
+          status: 'success',
+          duration: durationSeconds,
+          result: 'Workflow ran successfully',
+        };
+
+        setWorkflow(prev => {
+          const previousHistory = Array.isArray(prev.executionHistory) ? prev.executionHistory : [];
+          const updatedHistory = [newHistoryEntry, ...previousHistory];
+          const updatedTotalRuns = (prev.totalRuns || 0) + 1;
+          const successfulRuns = updatedHistory.filter(h => h.status === 'success').length;
+          const updatedSuccessRate = Number(((successfulRuns / updatedHistory.length) * 100).toFixed(1));
+
+          const updated = {
+            ...prev,
+            lastRun: 'just now',
+            totalRuns: updatedTotalRuns,
+            successRate: isFinite(updatedSuccessRate) ? updatedSuccessRate : (prev.successRate || 0),
+            executionHistory: updatedHistory,
+          };
+
+          const userId = prev?.ownerId || user?.wallet?.address || user?.id || 'anonymous';
+          try {
+            lsUpsertWorkflow(userId, updated);
+          } catch (e) {
+            console.error('Failed to persist workflow run history:', e);
+          }
+          return updated;
+        });
         setIsRunning(false);
       }, 2000);
     } catch (error) {
@@ -177,7 +216,7 @@ export default function WorkflowPage({ params }) {
         <div className="flex items-center justify-between mb-8">
           <div className="flex items-center space-x-4">
             <Link
-              href="/"
+              href="/workflow"
               className="p-2 text-foreground/70 hover:text-foreground hover:bg-hover rounded-lg transition-colors"
             >
               <ArrowLeft className="w-5 h-5" />
@@ -321,22 +360,26 @@ export default function WorkflowPage({ params }) {
             <div className="workflow-node p-6">
               <h3 className="text-lg font-semibold text-foreground mb-4">Recent Activity</h3>
               <div className="space-y-3">
-                {(workflow.executionHistory ?? []).map((execution, index) => (
-                  <div key={index} className="flex items-center justify-between">
-                    <div className="flex items-center space-x-3">
-                      {execution.status === 'success' ? (
-                        <CheckCircle className="w-4 h-4 text-green-500" />
-                      ) : (
-                        <AlertCircle className="w-4 h-4 text-red-500" />
-                      )}
-                      <div>
-                        <p className="text-sm text-foreground">{execution.result}</p>
-                        <p className="text-xs text-foreground/70">{execution.timestamp}</p>
+                {((workflow.executionHistory ?? []).length === 0) ? (
+                  <p className="text-sm text-foreground/60 italic">No recent activity.</p>
+                ) : (
+                  (workflow.executionHistory ?? []).map((execution, index) => (
+                    <div key={index} className="flex items-center justify-between">
+                      <div className="flex items-center space-x-3">
+                        {execution.status === 'success' ? (
+                          <CheckCircle className="w-4 h-4 text-green-500" />
+                        ) : (
+                          <AlertCircle className="w-4 h-4 text-red-500" />
+                        )}
+                        <div>
+                          <p className="text-sm text-foreground">{execution.result}</p>
+                          <p className="text-xs text-foreground/70">{execution.timestamp}</p>
+                        </div>
                       </div>
+                      <span className="text-xs text-foreground/70">{execution.duration}</span>
                     </div>
-                    <span className="text-xs text-foreground/70">{execution.duration}</span>
-                  </div>
-                ))}
+                  ))
+                )}
               </div>
             </div>
           </div>
@@ -354,29 +397,33 @@ export default function WorkflowPage({ params }) {
           <div className="workflow-node p-6">
             <h3 className="text-lg font-semibold text-foreground mb-4">Execution History</h3>
             <div className="space-y-4">
-              {(workflow.executionHistory ?? []).map((execution, index) => (
-                <div key={index} className="flex items-center justify-between p-4 border border-border rounded-lg">
-                  <div className="flex items-center space-x-4">
-                    {execution.status === 'success' ? (
-                      <CheckCircle className="w-5 h-5 text-green-500" />
-                    ) : (
-                      <AlertCircle className="w-5 h-5 text-red-500" />
-                    )}
-                    <div>
-                      <p className="text-foreground font-medium">{execution.result}</p>
-                      <p className="text-sm text-foreground/70">{execution.timestamp}</p>
+              {((workflow.executionHistory ?? []).length === 0) ? (
+                <p className="text-sm text-foreground/60 italic">No history yet.</p>
+              ) : (
+                (workflow.executionHistory ?? []).map((execution, index) => (
+                  <div key={index} className="flex items-center justify-between p-4 border border-border rounded-lg">
+                    <div className="flex items-center space-x-4">
+                      {execution.status === 'success' ? (
+                        <CheckCircle className="w-5 h-5 text-green-500" />
+                      ) : (
+                        <AlertCircle className="w-5 h-5 text-red-500" />
+                      )}
+                      <div>
+                        <p className="text-foreground font-medium">{execution.result}</p>
+                        <p className="text-sm text-foreground/70">{execution.timestamp}</p>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-sm text-foreground">{execution.duration}</p>
+                      <p className={`text-xs capitalize ${
+                        execution.status === 'success' ? 'text-green-500' : 'text-red-500'
+                      }`}>
+                        {execution.status}
+                      </p>
                     </div>
                   </div>
-                  <div className="text-right">
-                    <p className="text-sm text-foreground">{execution.duration}</p>
-                    <p className={`text-xs capitalize ${
-                      execution.status === 'success' ? 'text-green-500' : 'text-red-500'
-                    }`}>
-                      {execution.status}
-                    </p>
-                  </div>
-                </div>
-              ))}
+                ))
+              )}
             </div>
           </div>
         )}
@@ -391,7 +438,8 @@ export default function WorkflowPage({ params }) {
                 </label>
                 <input
                   type="text"
-                  value={workflow.name}
+                  value={editableName}
+                  onChange={(e) => setEditableName(e.target.value)}
                   className="w-full px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-foreground"
                 />
               </div>
@@ -400,7 +448,8 @@ export default function WorkflowPage({ params }) {
                   Description
                 </label>
                 <textarea
-                  value={workflow.description}
+                  value={editableDescription}
+                  onChange={(e) => setEditableDescription(e.target.value)}
                   rows={3}
                   className="w-full px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-foreground resize-none"
                 />
@@ -412,12 +461,33 @@ export default function WorkflowPage({ params }) {
                 </div>
                 <input
                   type="checkbox"
-                  checked={workflow.status === 'active'}
+                  checked={autoRun}
+                  onChange={(e) => setAutoRun(e.target.checked)}
                   className="w-4 h-4 text-primary bg-background border-border rounded focus:ring-primary focus:ring-2"
                 />
               </div>
               <div className="pt-4 border-t border-border">
-                <button className="px-4 py-2 bg-primary hover:bg-primary/90 text-white rounded-lg transition-colors">
+                <button
+                  className="px-4 py-2 bg-primary hover:bg-primary/90 text-white rounded-lg transition-colors"
+                  onClick={() => {
+                    if (!workflow) return;
+                    const updated = {
+                      ...workflow,
+                      name: editableName,
+                      description: editableDescription,
+                      status: autoRun ? 'active' : 'paused',
+                      updatedAt: new Date().toISOString(),
+                    };
+                    const userId = workflow?.ownerId || user?.wallet?.address || user?.id || 'anonymous';
+                    try {
+                      lsUpsertWorkflow(userId, updated);
+                      setWorkflow(updated);
+                    } catch (e) {
+                      console.error('Failed to save workflow settings:', e);
+                      alert('Failed to save workflow settings');
+                    }
+                  }}
+                >
                   Save Settings
                 </button>
               </div>

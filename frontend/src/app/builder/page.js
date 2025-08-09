@@ -358,7 +358,7 @@ function BuilderContent() {
               </button>
               <button
                 onClick={handleRunWorkflow}
-                disabled={!currentWorkflowId}
+                // disabled={!currentWorkflowId}
                 className="flex items-center space-x-2 px-4 py-2 bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white rounded-lg transition-colors"
               >
                 <Play className="w-4 h-4" />

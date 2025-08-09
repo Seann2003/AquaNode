@@ -65,10 +65,10 @@ body {
   transition: all 0.2s ease;
 }
 
-.workflow-node:hover {
+/* .workflow-node:hover {
   border-color: var(--primary-blue);
   box-shadow: 0 4px 12px rgba(59, 130, 246, 0.15);
-}
+} */
 
 .workflow-node.selected {
   border-color: var(--accent-blue);

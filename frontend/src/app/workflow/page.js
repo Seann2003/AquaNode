@@ -262,7 +262,7 @@ function TemplateCard({ template, onUse }) {
         )}
       </div>
 
-      <button onClick={() => onUse(template)} className="w-full flex items-center justify-center space-x-2 bg-primary hover:bg-primary/90 text-white px-4 py-2 rounded-lg transition-colors">
+      <button onClick={() => onUse(template)} className="cursor-pointer w-full flex items-center justify-center space-x-2 bg-primary hover:bg-primary/90 text-white px-4 py-2 rounded-lg transition-colors">
         <Plus className="w-4 h-4" />
         <span>Use Template</span>
       </button>
