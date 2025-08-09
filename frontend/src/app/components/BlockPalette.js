@@ -3,7 +3,7 @@
 import { useDraggable } from '@dnd-kit/core';
 import { useState } from 'react';
 
-const categories = ['Logic', 'Wallet', 'Token', 'DeFi', 'AI', 'Config'];
+const categories = ['Logic', 'Wallet', 'Token', 'DeFi', 'AI', 'Notifications', 'Config'];
 
 export default function BlockPalette({ blockTypes }) {
   const [selectedCategory, setSelectedCategory] = useState('All');

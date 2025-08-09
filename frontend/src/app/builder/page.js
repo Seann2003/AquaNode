@@ -14,7 +14,8 @@ import {
   Save,
   Play,
   Settings,
-  ArrowLeft
+  ArrowLeft,
+  Mail
 } from 'lucide-react';
 import Link from 'next/link';
 import { usePrivy } from '@privy-io/react-auth';
@@ -97,6 +98,14 @@ export const blockTypes = {
     category: 'AI',
     color: 'bg-pink-500',
     description: 'Get AI-powered insights and explanations'
+  },
+  sendEmail: {
+    id: 'sendEmail',
+    name: 'Send Email',
+    icon: Mail,
+    category: 'Notifications',
+    color: 'bg-emerald-600',
+    description: 'Send an email via Resend API'
   },
   cronjob: {
     id: 'cronjob',

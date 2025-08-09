@@ -15,6 +15,17 @@ const configSchemas = {
     { key: 'includeStaked', label: 'Include Staked Tokens', type: 'checkbox', default: false },
     { key: 'network', label: 'Network', type: 'select', options: ['mainnet', 'testnet', 'devnet'], default: 'mainnet' }
   ],
+  sendEmail: [
+    { key: 'to', label: 'To (comma-separated)', type: 'text', required: true },
+    { key: 'cc', label: 'Cc (comma-separated)', type: 'text' },
+    { key: 'bcc', label: 'Bcc (comma-separated)', type: 'text' },
+    { key: 'from', label: 'From (optional, overrides default)', type: 'text' },
+    { key: 'subject', label: 'Subject', type: 'text', required: true },
+    { key: 'body', label: 'Body (text)', type: 'textarea', required: true, placeholder: 'You can reference previous results like {{previous.token_info.tokenInfo.symbol}}' },
+    { key: 'useHtml', label: 'Body is HTML', type: 'checkbox', default: false },
+    { key: 'provider', label: 'Provider', type: 'select', options: ['Resend'], default: 'Resend' },
+    { key: 'dryRun', label: 'Dry run if not configured', type: 'checkbox', default: true }
+  ],
   walletTransaction: [
     { key: 'walletAddress', label: 'Wallet Address', type: 'text', required: true },
     { key: 'chain', label: 'Chain', type: 'select', options: ['Sui', 'Oasis Sapphire'], required: true },

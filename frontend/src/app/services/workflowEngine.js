@@ -1,8 +1,10 @@
 import BlockchainService from './blockchainService';
+import EmailService from './emailService';
 
 class WorkflowEngine {
   constructor() {
     this.blockchainService = new BlockchainService();
+    this.emailService = new EmailService();
     this.executionContext = {};
     this.isRunning = false;
   }
@@ -167,6 +169,9 @@ class WorkflowEngine {
           
         case 'cronjob':
           result = await this.executeCronjobBlock(block, context);
+          break;
+        case 'sendEmail':
+          result = await this.executeSendEmailBlock(block, context);
           break;
           
         default:
@@ -412,6 +417,28 @@ class WorkflowEngine {
       enabled: enabled !== false,
       maxRuns: maxRuns || 0,
       status: 'configured',
+    };
+  }
+
+  async executeSendEmailBlock(block, context) {
+    const { to, cc, bcc, from, subject, body, useHtml, provider, dryRun } = block.config;
+    if (!to) throw new Error('Email recipient is required');
+    if (!subject) throw new Error('Email subject is required');
+    if (!body) throw new Error('Email body is required');
+
+    const response = await this.emailService.sendEmail({ to, cc, bcc, from, subject, body, useHtml, provider, dryRun }, context);
+
+    return {
+      type: 'send_email',
+      provider: provider || 'Resend',
+      to,
+      cc,
+      bcc,
+      subject,
+      status: response.success ? 'sent' : 'failed',
+      messageId: response.id || null,
+      dryRun: response.dryRun || false,
+      error: response.success ? null : response.error,
     };
   }
 
