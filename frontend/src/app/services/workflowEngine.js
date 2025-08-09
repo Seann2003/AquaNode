@@ -27,19 +27,27 @@ class WorkflowEngine {
 
     try {
       console.log(`Starting workflow execution: ${workflow.name}`);
-      
+
       const results = [];
-      
+
       for (let i = 0; i < workflow.blocks.length; i++) {
         const block = workflow.blocks[i];
-        
+
         try {
-          console.log(`Executing block ${i + 1}/${workflow.blocks.length}: ${block.name}`);
-          
-          const blockResult = await this.executeBlock(block, this.executionContext);
+          console.log(
+            `Executing block ${i + 1}/${workflow.blocks.length}: ${block.name}`
+          );
+
+          const blockResult = await this.executeBlock(
+            block,
+            this.executionContext
+          );
 
           const isReportedFailure =
-            blockResult && (blockResult.success === false || blockResult.status === 'failed' || !!blockResult.error);
+            blockResult &&
+            (blockResult.success === false ||
+              blockResult.status === 'failed' ||
+              !!blockResult.error);
 
           if (isReportedFailure) {
             results.push({
@@ -74,14 +82,15 @@ class WorkflowEngine {
           if (block.type === 'conditional') {
             const shouldContinue = this.evaluateConditional(block, blockResult);
             if (!shouldContinue) {
-              console.log('Conditional block failed, stopping workflow execution');
+              console.log(
+                'Conditional block failed, stopping workflow execution'
+              );
               break;
             }
           }
-
         } catch (error) {
           console.error(`Block execution failed: ${block.name}`, error);
-          
+
           results.push({
             blockId: block.id,
             blockName: block.name,
@@ -104,10 +113,13 @@ class WorkflowEngine {
       const executionSummary = {
         workflowId: workflow.id,
         workflowName: workflow.name,
-        status: this.executionContext.errors.length > 0 ? 'partial_success' : 'success',
+        status:
+          this.executionContext.errors.length > 0
+            ? 'partial_success'
+            : 'success',
         totalBlocks: workflow.blocks.length,
-        successfulBlocks: results.filter(r => r.status === 'success').length,
-        failedBlocks: results.filter(r => r.status === 'error').length,
+        successfulBlocks: results.filter((r) => r.status === 'success').length,
+        failedBlocks: results.filter((r) => r.status === 'error').length,
         totalExecutionTime: Date.now() - this.executionContext.startTime,
         results,
         errors: this.executionContext.errors,
@@ -116,7 +128,6 @@ class WorkflowEngine {
 
       console.log('Workflow execution completed:', executionSummary);
       return executionSummary;
-
     } catch (error) {
       console.error('Workflow execution failed:', error);
       throw error;
@@ -128,7 +139,7 @@ class WorkflowEngine {
 
   async executeBlock(block, context) {
     const startTime = Date.now();
-    
+
     try {
       let result;
 
@@ -136,78 +147,78 @@ class WorkflowEngine {
         case 'walletBalance':
           result = await this.executeWalletBalanceBlock(block, context);
           break;
-          
+
         case 'walletTransaction':
           result = await this.executeWalletTransactionBlock(block, context);
           break;
-          
+
         case 'walletNFT':
           result = await this.executeWalletNFTBlock(block, context);
           break;
-          
+
         case 'tokenInfo':
           result = await this.executeTokenInfoBlock(block, context);
           break;
-          
+
         case 'conditional':
           result = await this.executeConditionalBlock(block, context);
           break;
-          
+
         case 'stake':
           result = await this.executeStakeBlock(block, context);
           break;
-          
+
         case 'swap':
           result = await this.executeSwapBlock(block, context);
           break;
-          
+
         case 'embeddedWallet':
           result = await this.executeEmbeddedWalletBlock(block, context);
           break;
-          
+
         case 'aiExplanation':
           result = await this.executeAIExplanationBlock(block, context);
           break;
-          
+
         case 'cronjob':
           result = await this.executeCronjobBlock(block, context);
           break;
         case 'sendEmail':
           result = await this.executeSendEmailBlock(block, context);
           break;
-          
+
         case 'balancesByAddress':
           result = await this.executeBalancesByAddressBlock(block, context);
           break;
-          
+
         case 'transferEvents':
           result = await this.executeTransferEventsBlock(block, context);
           break;
-          
+
         case 'tokenHolders':
           result = await this.executeTokenHoldersBlock(block, context);
           break;
-          
+
         case 'tokenMetadata':
           result = await this.executeTokenMetadataBlock(block, context);
           break;
-          
+
         case 'liquidityPools':
           result = await this.executeLiquidityPoolsBlock(block, context);
           break;
-          
+
         case 'swapEvents':
           result = await this.executeSwapEventsBlock(block, context);
           break;
-          
+
         case 'nftActivities':
           result = await this.executeNFTActivitiesBlock(block, context);
           break;
-          
+
         case 'nftCollection':
           result = await this.executeNFTCollectionBlock(block, context);
           break;
-          
+
         default:
           throw new Error(`Unknown block type: ${block.type}`);
       }
@@ -217,15 +228,15 @@ class WorkflowEngine {
         executionTime: Date.now() - startTime,
         timestamp: new Date().toISOString(),
       };
-
     } catch (error) {
       throw new Error(`Block execution failed: ${error.message}`);
     }
   }
 
   async executeWalletBalanceBlock(block, context) {
-    const { chain, walletAddress, tokenType, tokenAddress, network } = block.config;
-    
+    const { chain, walletAddress, tokenType, tokenAddress, network } =
+      block.config;
+
     if (!walletAddress) {
       throw new Error('Wallet address is required');
     }
@@ -249,8 +260,9 @@ class WorkflowEngine {
   }
 
   async executeWalletTransactionBlock(block, context) {
-    const { chain, walletAddress, limit, transactionType, network } = block.config;
-    
+    const { chain, walletAddress, limit, transactionType, network } =
+      block.config;
+
     if (!walletAddress) {
       throw new Error('Wallet address is required');
     }
@@ -274,8 +286,9 @@ class WorkflowEngine {
   }
 
   async executeWalletNFTBlock(block, context) {
-    const { chain, walletAddress, includeNFTs, includeTokens, network } = block.config;
-    
+    const { chain, walletAddress, includeNFTs, includeTokens, network } =
+      block.config;
+
     if (!walletAddress) {
       throw new Error('Wallet address is required');
     }
@@ -298,40 +311,170 @@ class WorkflowEngine {
   }
 
   async executeTokenInfoBlock(block, context) {
-    const { chain, tokenAddress, includePrice, includeMetrics, network } = block.config;
-    
-    if (!tokenAddress) {
-      throw new Error('Token address is required');
-    }
-
-    const tokenInfo = await this.blockchainService.getTokenInfo(
-      chain,
+    const {
+      inputType,
+      coin,
       tokenAddress,
+      chain,
       includePrice,
       includeMetrics,
-      { network }
-    );
-
-    return {
-      type: 'token_info',
-      chain,
-      tokenAddress,
-      tokenInfo,
       network,
-    };
+    } = block.config;
+
+    try {
+      console.log(`Executing tokenInfo block with config:`, block.config);
+
+      // Option 1: Use coin symbol with theGraphService (Uniswap V3 data)
+      if (inputType === 'Coin Symbol' || coin) {
+        if (!coin) {
+          throw new Error(
+            'Coin symbol is required when input type is "Coin Symbol"'
+          );
+        }
+
+        console.log(`Fetching coin info for: ${coin}`);
+        const coinInfo = await this.theGraphService.getCoinInfo(coin);
+
+        const shaped = {
+          success: true,
+          type: 'token_info',
+          source: 'uniswap_v3',
+          inputType: 'Coin Symbol',
+          coin: coin.toUpperCase(),
+          data: {
+            // Map theGraphService data to expected format
+            symbol: coinInfo.data.token0.symbol,
+            name: coinInfo.data.token0.name,
+            decimals: coinInfo.data.token0.decimals,
+            pairName: coinInfo.data.pairName,
+            currentPrice: coinInfo.data.currentPrice,
+            priceChange24h: coinInfo.data.priceChange24h,
+            volume24h: coinInfo.data.volume24h,
+            volumeChange24h: coinInfo.data.volumeChange24h,
+            tvl: coinInfo.data.tvl,
+            feeTier: coinInfo.data.feeTier,
+            poolAddress: coinInfo.poolAddress,
+            // Include price and metrics data
+            priceData:
+              includePrice !== false
+                ? {
+                    currentPrice: coinInfo.data.currentPrice,
+                    priceChange24h: coinInfo.data.priceChange24h,
+                    historicalData: coinInfo.data.historicalData,
+                  }
+                : null,
+            metricsData:
+              includeMetrics !== false
+                ? {
+                    volume24h: coinInfo.data.volume24h,
+                    volumeChange24h: coinInfo.data.volumeChange24h,
+                    tvl: coinInfo.data.tvl,
+                    feeTier: coinInfo.data.feeTier,
+                  }
+                : null,
+          },
+          metadata: {
+            coin,
+            poolAddress: coinInfo.poolAddress,
+            timestamp: coinInfo.timestamp,
+            includePrice: includePrice !== false,
+            includeMetrics: includeMetrics !== false,
+            source: 'uniswap_v3',
+          },
+        };
+
+        block.lastResult = shaped;
+        console.log(`Coin info result for ${coin}:`, shaped);
+        return shaped;
+      }
+
+      // Option 2: Use token address with blockchainService (original functionality)
+      if (inputType === 'Token Address' || tokenAddress) {
+        if (!tokenAddress) {
+          throw new Error(
+            'Token address is required when input type is "Token Address"'
+          );
+        }
+
+        if (!chain) {
+          throw new Error('Chain is required when using token address');
+        }
+
+        console.log(
+          `Fetching token info for address: ${tokenAddress} on ${chain}`
+        );
+        const tokenInfo = await this.blockchainService.getTokenInfo(
+          chain,
+          tokenAddress,
+          includePrice,
+          includeMetrics,
+          { network }
+        );
+
+        const shaped = {
+          success: true,
+          type: 'token_info',
+          source: 'blockchain_service',
+          inputType: 'Token Address',
+          chain,
+          tokenAddress,
+          data: tokenInfo,
+          metadata: {
+            tokenAddress,
+            chain,
+            network,
+            includePrice,
+            includeMetrics,
+            timestamp: new Date().toISOString(),
+            source: 'blockchain_service',
+          },
+        };
+
+        block.lastResult = shaped;
+        console.log(`Token info result for ${tokenAddress}:`, shaped);
+        return shaped;
+      }
+
+      // Neither option provided
+      throw new Error(
+        'Either coin symbol or token address is required. Please select an input type.'
+      );
+    } catch (error) {
+      console.error(`Error in executeTokenInfoBlock:`, error);
+
+      const shaped = {
+        success: false,
+        type: 'token_info',
+        error: error.message,
+        metadata: {
+          inputType: inputType || null,
+          coin: coin || null,
+          tokenAddress: tokenAddress || null,
+          chain: chain || null,
+          timestamp: new Date().toISOString(),
+        },
+      };
+
+      block.lastResult = shaped;
+      return shaped;
+    }
   }
 
   async executeConditionalBlock(block, context) {
     const { condition, value, field } = block.config;
-    
+
     if (!condition || !value || !field) {
       throw new Error('Condition, value, and field are required');
     }
 
     // Get the field value from previous block results
     const fieldValue = this.getFieldFromContext(field, context);
-    
-    const result = this.blockchainService.evaluateCondition(condition, value, fieldValue);
+
+    const result = this.blockchainService.evaluateCondition(
+      condition,
+      value,
+      fieldValue
+    );
 
     return {
       type: 'conditional',
@@ -347,12 +490,16 @@ class WorkflowEngine {
   async executeStakeBlock(block, context) {
     const { chain } = block.config;
     const userWallet = context.userWallets[chain];
-    
+
     if (!userWallet) {
       throw new Error(`No wallet connected for ${chain}`);
     }
 
-    const result = await this.blockchainService.stakeTokens(chain, block.config, userWallet);
+    const result = await this.blockchainService.stakeTokens(
+      chain,
+      block.config,
+      userWallet
+    );
 
     return {
       type: 'stake',
@@ -364,12 +511,16 @@ class WorkflowEngine {
   async executeSwapBlock(block, context) {
     const { chain } = block.config;
     const userWallet = context.userWallets[chain];
-    
+
     if (!userWallet) {
       throw new Error(`No wallet connected for ${chain}`);
     }
 
-    const result = await this.blockchainService.swapTokens(chain, block.config, userWallet);
+    const result = await this.blockchainService.swapTokens(
+      chain,
+      block.config,
+      userWallet
+    );
 
     return {
       type: 'swap',
@@ -393,7 +544,7 @@ class WorkflowEngine {
 
   async executeAIExplanationBlock(block, context) {
     const { prompt } = block.config;
-    
+
     if (!prompt) {
       throw new Error('AI prompt is required');
     }
@@ -408,16 +559,32 @@ class WorkflowEngine {
       if (r.type === 'wallet_balance') {
         const native = r.balance?.native || {};
         const formatted = parseFloat(native.formatted ?? native.balance ?? '0');
-        const symbol = native.symbol || (r.chain?.includes('Oasis') ? 'ROSE' : r.chain?.includes('Sui') ? 'SUI' : 'Native');
-        balanceSummary.push({ chain: r.chain, address: r.address, amount: formatted, symbol });
+        const symbol =
+          native.symbol ||
+          (r.chain?.includes('Oasis')
+            ? 'ROSE'
+            : r.chain?.includes('Sui')
+            ? 'SUI'
+            : 'Native');
+        balanceSummary.push({
+          chain: r.chain,
+          address: r.address,
+          amount: formatted,
+          symbol,
+        });
       }
       if (r.type === 'wallet_transactions') {
-        txSummary.push({ chain: r.chain, address: r.address, count: Array.isArray(r.transactions) ? r.transactions.length : 0 });
+        txSummary.push({
+          chain: r.chain,
+          address: r.address,
+          count: Array.isArray(r.transactions) ? r.transactions.length : 0,
+        });
       }
     });
 
     const totalBySymbol = balanceSummary.reduce((acc, b) => {
-      acc[b.symbol] = (acc[b.symbol] || 0) + (isFinite(b.amount) ? b.amount : 0);
+      acc[b.symbol] =
+        (acc[b.symbol] || 0) + (isFinite(b.amount) ? b.amount : 0);
       return acc;
     }, {});
 
@@ -428,10 +595,14 @@ class WorkflowEngine {
         transactions: txSummary,
         totalBySymbol,
       },
-      guidance: 'Use summaries for quick reasoning. Provide totals and any notable patterns. If values are in different symbols, keep per-symbol totals.',
+      guidance:
+        'Use summaries for quick reasoning. Provide totals and any notable patterns. If values are in different symbols, keep per-symbol totals.',
     };
 
-    const aiResponse = await this.blockchainService.generateAIExplanation(prompt, contextData);
+    const aiResponse = await this.blockchainService.generateAIExplanation(
+      prompt,
+      contextData
+    );
 
     return {
       type: 'ai_explanation',
@@ -455,12 +626,16 @@ class WorkflowEngine {
   }
 
   async executeSendEmailBlock(block, context) {
-    const { to, cc, bcc, from, subject, body, useHtml, provider, dryRun } = block.config;
+    const { to, cc, bcc, from, subject, body, useHtml, provider, dryRun } =
+      block.config;
     if (!to) throw new Error('Email recipient is required');
     if (!subject) throw new Error('Email subject is required');
     if (!body) throw new Error('Email body is required');
 
-    const response = await this.emailService.sendEmail({ to, cc, bcc, from, subject, body, useHtml, provider, dryRun }, context);
+    const response = await this.emailService.sendEmail(
+      { to, cc, bcc, from, subject, body, useHtml, provider, dryRun },
+      context
+    );
 
     return {
       type: 'send_email',
@@ -483,35 +658,37 @@ class WorkflowEngine {
   getFieldFromContext(fieldPath, context) {
     // Parse field path like "blockId.field" or "previous.balance.native.formatted"
     const parts = fieldPath.split('.');
-    
+
     if (parts[0] === 'previous') {
       // Get from the last executed block
       const lastBlockId = Object.keys(context.results).pop();
       if (!lastBlockId) return null;
-      
+
       let value = context.results[lastBlockId];
       for (let i = 1; i < parts.length; i++) {
         value = value?.[parts[i]];
       }
       return value;
     }
-    
+
     // Get from specific block
     const blockId = parts[0];
     let value = context.results[blockId];
-    
+
     for (let i = 1; i < parts.length; i++) {
       value = value?.[parts[i]];
     }
-    
+
     return value;
   }
 
   // Workflow scheduling methods
   scheduleWorkflow(workflow, cronExpression) {
     // This would integrate with a job scheduler like node-cron
-    console.log(`Scheduling workflow ${workflow.id} with cron: ${cronExpression}`);
-    
+    console.log(
+      `Scheduling workflow ${workflow.id} with cron: ${cronExpression}`
+    );
+
     // Mock implementation
     return {
       workflowId: workflow.id,
@@ -523,7 +700,7 @@ class WorkflowEngine {
 
   cancelScheduledWorkflow(workflowId) {
     console.log(`Cancelling scheduled workflow: ${workflowId}`);
-    
+
     return {
       workflowId,
       status: 'cancelled',
@@ -533,28 +710,28 @@ class WorkflowEngine {
   // Workflow validation
   validateWorkflow(workflow) {
     const errors = [];
-    
+
     if (!workflow.name) {
       errors.push('Workflow name is required');
     }
-    
+
     if (!workflow.blocks || workflow.blocks.length === 0) {
       errors.push('Workflow must have at least one block');
     }
-    
+
     workflow.blocks?.forEach((block, index) => {
       if (!block.type) {
         errors.push(`Block ${index + 1} is missing type`);
       }
-      
+
       if (!block.config) {
         errors.push(`Block ${index + 1} is missing configuration`);
       }
-      
+
       // Validate block-specific requirements
       this.validateBlockConfig(block, errors, index);
     });
-    
+
     return {
       isValid: errors.length === 0,
       errors,
@@ -563,7 +740,7 @@ class WorkflowEngine {
 
   validateBlockConfig(block, errors, index) {
     const blockNum = index + 1;
-    
+
     switch (block.type) {
       case 'walletBalance':
       case 'walletTransaction':
@@ -575,7 +752,7 @@ class WorkflowEngine {
           errors.push(`Block ${blockNum}: Chain selection is required`);
         }
         break;
-        
+
       case 'tokenInfo':
         if (!block.config.tokenAddress) {
           errors.push(`Block ${blockNum}: Token address is required`);
@@ -584,13 +761,19 @@ class WorkflowEngine {
           errors.push(`Block ${blockNum}: Chain selection is required`);
         }
         break;
-        
+
       case 'conditional':
-        if (!block.config.condition || !block.config.value || !block.config.field) {
-          errors.push(`Block ${blockNum}: Condition, value, and field are required`);
+        if (
+          !block.config.condition ||
+          !block.config.value ||
+          !block.config.field
+        ) {
+          errors.push(
+            `Block ${blockNum}: Condition, value, and field are required`
+          );
         }
         break;
-        
+
       case 'stake':
       case 'swap':
         if (!block.config.chain) {
@@ -600,7 +783,7 @@ class WorkflowEngine {
           errors.push(`Block ${blockNum}: Amount is required`);
         }
         break;
-        
+
       case 'aiExplanation':
         if (!block.config.prompt) {
           errors.push(`Block ${blockNum}: AI prompt is required`);
@@ -612,7 +795,7 @@ class WorkflowEngine {
   // The Graph API block execution methods
   async executeBalancesByAddressBlock(block, context) {
     const { address, networkId, limit, page } = block.config;
-    
+
     if (!address) {
       throw new Error('Address is required');
     }
@@ -633,8 +816,8 @@ class WorkflowEngine {
           networkId: networkId || 'mainnet',
           limit: limit || 10,
           page: page || 1,
-          totalResults: result.data?.length || 0
-        }
+          totalResults: result.data?.length || 0,
+        },
       };
       // Save a simplified lastResult for UI preview
       block.lastResult = shaped;
@@ -642,7 +825,7 @@ class WorkflowEngine {
     } catch (error) {
       const shaped = {
         success: false,
-        error: error.message
+        error: error.message,
       };
       block.lastResult = shaped;
       return shaped;
@@ -650,7 +833,15 @@ class WorkflowEngine {
   }
 
   async executeTransferEventsBlock(block, context) {
-    const { networkId, startTime, endTime, orderBy, orderDirection, limit, page } = block.config;
+    const {
+      networkId,
+      startTime,
+      endTime,
+      orderBy,
+      orderDirection,
+      limit,
+      page,
+    } = block.config;
 
     try {
       const result = await this.theGraphService.getTransferEvents(
@@ -674,20 +865,21 @@ class WorkflowEngine {
           orderDirection: orderDirection || 'desc',
           limit: limit || 10,
           page: page || 1,
-          totalResults: result.data?.length || 0
-        }
+          totalResults: result.data?.length || 0,
+        },
       };
     } catch (error) {
       return {
         success: false,
-        error: error.message
+        error: error.message,
       };
     }
   }
 
   async executeTokenHoldersBlock(block, context) {
-    const { contract, networkId, orderBy, orderDirection, limit, page } = block.config;
-    
+    const { contract, networkId, orderBy, orderDirection, limit, page } =
+      block.config;
+
     if (!contract) {
       throw new Error('Token contract address is required');
     }
@@ -712,20 +904,20 @@ class WorkflowEngine {
           orderDirection: orderDirection || 'desc',
           limit: limit || 10,
           page: page || 1,
-          totalResults: result.data?.length || 0
-        }
+          totalResults: result.data?.length || 0,
+        },
       };
     } catch (error) {
       return {
         success: false,
-        error: error.message
+        error: error.message,
       };
     }
   }
 
   async executeTokenMetadataBlock(block, context) {
     const { contract, networkId } = block.config;
-    
+
     if (!contract) {
       throw new Error('Token contract address is required');
     }
@@ -741,13 +933,13 @@ class WorkflowEngine {
         data: result.data,
         metadata: {
           contract,
-          networkId: networkId || 'mainnet'
-        }
+          networkId: networkId || 'mainnet',
+        },
       };
     } catch (error) {
       return {
         success: false,
-        error: error.message
+        error: error.message,
       };
     }
   }
@@ -769,19 +961,27 @@ class WorkflowEngine {
           networkId: networkId || 'mainnet',
           limit: limit || 10,
           page: page || 1,
-          totalResults: result.data?.length || 0
-        }
+          totalResults: result.data?.length || 0,
+        },
       };
     } catch (error) {
       return {
         success: false,
-        error: error.message
+        error: error.message,
       };
     }
   }
 
   async executeSwapEventsBlock(block, context) {
-    const { networkId, startTime, endTime, orderBy, orderDirection, limit, page } = block.config;
+    const {
+      networkId,
+      startTime,
+      endTime,
+      orderBy,
+      orderDirection,
+      limit,
+      page,
+    } = block.config;
 
     try {
       const result = await this.theGraphService.getSwapEvents(
@@ -805,19 +1005,27 @@ class WorkflowEngine {
           orderDirection: orderDirection || 'desc',
           limit: limit || 10,
           page: page || 1,
-          totalResults: result.data?.length || 0
-        }
+          totalResults: result.data?.length || 0,
+        },
       };
     } catch (error) {
       return {
         success: false,
-        error: error.message
+        error: error.message,
       };
     }
   }
 
   async executeNFTActivitiesBlock(block, context) {
-    const { networkId, startTime, endTime, orderBy, orderDirection, limit, page } = block.config;
+    const {
+      networkId,
+      startTime,
+      endTime,
+      orderBy,
+      orderDirection,
+      limit,
+      page,
+    } = block.config;
 
     try {
       const result = await this.theGraphService.getNFTActivities(
@@ -841,20 +1049,20 @@ class WorkflowEngine {
           orderDirection: orderDirection || 'desc',
           limit: limit || 10,
           page: page || 1,
-          totalResults: result.data?.length || 0
-        }
+          totalResults: result.data?.length || 0,
+        },
       };
     } catch (error) {
       return {
         success: false,
-        error: error.message
+        error: error.message,
       };
     }
   }
 
   async executeNFTCollectionBlock(block, context) {
     const { contract, networkId } = block.config;
-    
+
     if (!contract) {
       throw new Error('NFT contract address is required');
     }
@@ -870,20 +1078,20 @@ class WorkflowEngine {
         data: result.data,
         metadata: {
           contract,
-          networkId: networkId || 'mainnet'
-        }
+          networkId: networkId || 'mainnet',
+        },
       };
     } catch (error) {
       return {
         success: false,
-        error: error.message
+        error: error.message,
       };
     }
   }
 
   validateBlockConfig(block, errors, index) {
     const blockNum = index + 1;
-    
+
     switch (block.type) {
       case 'walletBalance':
       case 'walletTransaction':
@@ -895,7 +1103,7 @@ class WorkflowEngine {
           errors.push(`Block ${blockNum}: Chain selection is required`);
         }
         break;
-        
+
       case 'tokenInfo':
         if (!block.config.tokenAddress) {
           errors.push(`Block ${blockNum}: Token address is required`);
@@ -904,13 +1112,19 @@ class WorkflowEngine {
           errors.push(`Block ${blockNum}: Chain selection is required`);
         }
         break;
-        
+
       case 'conditional':
-        if (!block.config.condition || !block.config.value || !block.config.field) {
-          errors.push(`Block ${blockNum}: Condition, value, and field are required`);
+        if (
+          !block.config.condition ||
+          !block.config.value ||
+          !block.config.field
+        ) {
+          errors.push(
+            `Block ${blockNum}: Condition, value, and field are required`
+          );
         }
         break;
-        
+
       case 'stake':
       case 'swap':
         if (!block.config.chain) {
@@ -920,27 +1134,27 @@ class WorkflowEngine {
           errors.push(`Block ${blockNum}: Amount is required`);
         }
         break;
-        
+
       case 'aiExplanation':
         if (!block.config.prompt) {
           errors.push(`Block ${blockNum}: AI prompt is required`);
         }
         break;
-        
+
       // The Graph API blocks validation
       case 'balancesByAddress':
         if (!block.config.address) {
           errors.push(`Block ${blockNum}: Address is required`);
         }
         break;
-        
+
       case 'tokenHolders':
       case 'tokenMetadata':
         if (!block.config.contract) {
           errors.push(`Block ${blockNum}: Token contract address is required`);
         }
         break;
-        
+
       case 'nftCollection':
         if (!block.config.contract) {
           errors.push(`Block ${blockNum}: NFT contract address is required`);
