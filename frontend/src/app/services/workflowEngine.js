@@ -625,7 +625,7 @@ class WorkflowEngine {
         page || 1
       );
 
-      return {
+      const shaped = {
         success: true,
         data: result.data,
         metadata: {
@@ -636,11 +636,16 @@ class WorkflowEngine {
           totalResults: result.data?.length || 0
         }
       };
+      // Save a simplified lastResult for UI preview
+      block.lastResult = shaped;
+      return shaped;
     } catch (error) {
-      return {
+      const shaped = {
         success: false,
         error: error.message
       };
+      block.lastResult = shaped;
+      return shaped;
     }
   }
 

@@ -6,7 +6,12 @@ const CHAIN_LOGOS = {
   'Sui': 'https://assets.crypto.ro/logos/sui-sui-logo.png',
   'Oasis Sapphire': 'https://cdn.prod.website-files.com/614c99cf4f23700c8aa3752a/678956f64329d5ac19622b33_Oasis%20Sapphire.png',
   'The Graph': 'https://s2.coinmarketcap.com/static/img/coins/200x200/6719.png',
-  'CoinGecko': 'https://play-lh.googleusercontent.com/2wCIQWu9gHP2vp2cvhJEcFw2ys7uuZV2wL0qZrENyE-iOEzYJHcdLHChr2lQ7R3YxYQ'
+  'CoinGecko': 'https://play-lh.googleusercontent.com/2wCIQWu9gHP2vp2cvhJEcFw2ys7uuZV2wL0qZrENyE-iOEzYJHcdLHChr2lQ7R3YxYQ',
+  'Ethereum': '/eth.png',
+  'Sepolia': '/eth.png',
+  'Polygon': '/polygon.png',
+  'Arbitrum': '/arbitrum.png',
+  'Optimism': '/optimism.png'
 };
 
 export default function ChainLogo({ 

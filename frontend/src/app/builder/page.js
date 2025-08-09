@@ -27,6 +27,23 @@ import { getTemplateById } from '../services/staticTemplates';
 
 // Block definitions
 export const blockTypes = {
+  
+  balancesByAddress: {
+    id: 'balancesByAddress',
+    name: 'Balances by Address',
+    icon: Wallet,
+    category: 'Token',
+    color: 'bg-blue-500',
+    description: 'Get token balances for an address via The Graph'
+  },
+  transferEvents: {
+    id: 'transferEvents',
+    name: 'Transfer Events',
+    icon: TrendingUp,
+    category: 'Token',
+    color: 'bg-blue-500',
+    description: 'Get token transfer events via The Graph'
+  },
   conditional: {
     id: 'conditional',
     name: 'Conditional (IF)',
@@ -35,37 +52,54 @@ export const blockTypes = {
     color: 'bg-purple-500',
     description: 'Execute actions based on conditions'
   },
-  walletBalance: {
-    id: 'walletBalance',
-    name: 'Get Balance',
-    icon: Wallet,
-    category: 'Wallet',
-    color: 'bg-blue-500',
-    description: 'Get wallet balance for specified address'
+  tokenHolders: {
+    id: 'tokenHolders',
+    name: 'Token Holders',
+    icon: Coins,
+    category: 'Token',
+    color: 'bg-cyan-500',
+    description: 'Get token holders for a contract via The Graph'
   },
-  walletTransaction: {
-    id: 'walletTransaction',
-    name: 'Get Transaction',
-    icon: Wallet,
-    category: 'Wallet',
-    color: 'bg-blue-500',
-    description: 'Get transaction history for wallet'
+  tokenMetadata: {
+    id: 'tokenMetadata',
+    name: 'Token Metadata',
+    icon: Coins,
+    category: 'Token',
+    color: 'bg-cyan-500',
+    description: 'Get token metadata via The Graph'
   },
-  walletNFT: {
-    id: 'walletNFT',
-    name: 'Get NFT / Tokens',
-    icon: Wallet,
-    category: 'Wallet',
-    color: 'bg-blue-500',
-    description: 'Get NFTs and tokens in wallet'
-  },
+  
+  // walletBalance: {
+  //   id: 'walletBalance',
+  //   name: 'Get Balance',
+  //   icon: Wallet,
+  //   category: 'Wallet',
+  //   color: 'bg-blue-500',
+  //   description: 'Get wallet balance for specified address'
+  // },
+  // walletTransaction: {
+  //   id: 'walletTransaction',
+  //   name: 'Get Transaction',
+  //   icon: Wallet,
+  //   category: 'Wallet',
+  //   color: 'bg-blue-500',
+  //   description: 'Get transaction history for wallet'
+  // },
+  // walletNFT: {
+  //   id: 'walletNFT',
+  //   name: 'Get NFT / Tokens',
+  //   icon: Wallet,
+  //   category: 'Wallet',
+  //   color: 'bg-blue-500',
+  //   description: 'Get NFTs and tokens in wallet'
+  // },
   tokenInfo: {
     id: 'tokenInfo',
     name: 'Get Token Info',
     icon: Coins,
     category: 'Token',
     color: 'bg-green-500',
-    description: 'Get detailed token information'
+    description: 'Get detailed token information via The Graph'
   },
   stake: {
     id: 'stake',
@@ -82,6 +116,14 @@ export const blockTypes = {
     category: 'DeFi',
     color: 'bg-orange-500',
     description: 'Swap tokens on Sui or Oasis'
+  },
+  swapEvents: {
+    id: 'swapEvents',
+    name: 'Swap Events',
+    icon: TrendingUp,
+    category: 'DeFi',
+    color: 'bg-cyan-500',
+    description: 'Get swap events data via The Graph'
   },
   embeddedWallet: {
     id: 'embeddedWallet',
@@ -115,38 +157,6 @@ export const blockTypes = {
     color: 'bg-gray-500',
     description: 'Schedule workflow execution (5 seconds interval)'
   },
-  balancesByAddress: {
-    id: 'balancesByAddress',
-    name: 'Balances by Address',
-    icon: Wallet,
-    category: 'Token',
-    color: 'bg-cyan-500',
-    description: 'Get token balances for an address via The Graph'
-  },
-  transferEvents: {
-    id: 'transferEvents',
-    name: 'Transfer Events',
-    icon: TrendingUp,
-    category: 'Token',
-    color: 'bg-cyan-500',
-    description: 'Get token transfer events via The Graph'
-  },
-  tokenHolders: {
-    id: 'tokenHolders',
-    name: 'Token Holders',
-    icon: Coins,
-    category: 'Token',
-    color: 'bg-cyan-500',
-    description: 'Get token holders for a contract via The Graph'
-  },
-  tokenMetadata: {
-    id: 'tokenMetadata',
-    name: 'Token Metadata',
-    icon: Coins,
-    category: 'Token',
-    color: 'bg-cyan-500',
-    description: 'Get token metadata via The Graph'
-  },
   liquidityPools: {
     id: 'liquidityPools',
     name: 'Liquidity Pools',
@@ -155,14 +165,7 @@ export const blockTypes = {
     color: 'bg-cyan-500',
     description: 'Get liquidity pools data via The Graph'
   },
-  swapEvents: {
-    id: 'swapEvents',
-    name: 'Swap Events',
-    icon: TrendingUp,
-    category: 'DeFi',
-    color: 'bg-cyan-500',
-    description: 'Get swap events data via The Graph'
-  },
+  
   nftActivities: {
     id: 'nftActivities',
     name: 'NFT Activities',

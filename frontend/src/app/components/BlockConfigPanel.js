@@ -1,9 +1,9 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { X, Save } from 'lucide-react';
 import { blockTypes } from '../builder/page';
-import ChainSelect, { PriceSourceSelect, NetworkSelect } from './ChainSelect';
+import ChainSelect, { PriceSourceSelect, NetworkSelect, NetworkIdSelect } from './ChainSelect';
 
 // Configuration schemas for different block types
 const configSchemas = {
@@ -95,12 +95,12 @@ const configSchemas = {
   ],
   balancesByAddress: [
     { key: 'address', label: 'Wallet Address', type: 'text', required: true },
-    { key: 'networkId', label: 'Network ID', type: 'select', options: ['mainnet', 'polygon', 'arbitrum', 'optimism'], default: 'mainnet' },
+    { key: 'networkId', label: 'Network', type: 'networkId', default: 'sepolia' },
     { key: 'limit', label: 'Limit', type: 'number', default: 10, max: 100 },
     { key: 'page', label: 'Page', type: 'number', default: 1, min: 1 }
   ],
   transferEvents: [
-    { key: 'networkId', label: 'Network ID', type: 'select', options: ['mainnet', 'polygon', 'arbitrum', 'optimism'], default: 'mainnet' },
+    { key: 'networkId', label: 'Network', type: 'networkId', default: 'sepolia' },
     { key: 'startTime', label: 'Start Time (timestamp)', type: 'number', default: 0 },
     { key: 'endTime', label: 'End Time (timestamp)', type: 'number', default: 9999999999 },
     { key: 'orderBy', label: 'Order By', type: 'select', options: ['timestamp', 'block_num'], default: 'timestamp' },
@@ -110,7 +110,7 @@ const configSchemas = {
   ],
   tokenHolders: [
     { key: 'contract', label: 'Token Contract Address', type: 'text', required: true },
-    { key: 'networkId', label: 'Network ID', type: 'select', options: ['mainnet', 'polygon', 'arbitrum', 'optimism'], default: 'mainnet' },
+    { key: 'networkId', label: 'Network', type: 'networkId', default: 'sepolia' },
     { key: 'orderBy', label: 'Order By', type: 'select', options: ['value', 'amount'], default: 'value' },
     { key: 'orderDirection', label: 'Order Direction', type: 'select', options: ['desc', 'asc'], default: 'desc' },
     { key: 'limit', label: 'Limit', type: 'number', default: 10, max: 100 },
@@ -118,15 +118,15 @@ const configSchemas = {
   ],
   tokenMetadata: [
     { key: 'contract', label: 'Token Contract Address', type: 'text', required: true },
-    { key: 'networkId', label: 'Network ID', type: 'select', options: ['mainnet', 'polygon', 'arbitrum', 'optimism'], default: 'mainnet' }
+    { key: 'networkId', label: 'Network', type: 'networkId', default: 'sepolia' }
   ],
   liquidityPools: [
-    { key: 'networkId', label: 'Network ID', type: 'select', options: ['mainnet', 'polygon', 'arbitrum', 'optimism'], default: 'mainnet' },
+    { key: 'networkId', label: 'Network', type: 'networkId', default: 'sepolia' },
     { key: 'limit', label: 'Limit', type: 'number', default: 10, max: 100 },
     { key: 'page', label: 'Page', type: 'number', default: 1, min: 1 }
   ],
   swapEvents: [
-    { key: 'networkId', label: 'Network ID', type: 'select', options: ['mainnet', 'polygon', 'arbitrum', 'optimism'], default: 'mainnet' },
+    { key: 'networkId', label: 'Network', type: 'networkId', default: 'sepolia' },
     { key: 'startTime', label: 'Start Time (timestamp)', type: 'number', default: 0 },
     { key: 'endTime', label: 'End Time (timestamp)', type: 'number', default: 9999999999 },
     { key: 'orderBy', label: 'Order By', type: 'select', options: ['timestamp', 'block_num'], default: 'timestamp' },
@@ -135,7 +135,7 @@ const configSchemas = {
     { key: 'page', label: 'Page', type: 'number', default: 1, min: 1 }
   ],
   nftActivities: [
-    { key: 'networkId', label: 'Network ID', type: 'select', options: ['mainnet', 'polygon', 'arbitrum', 'optimism'], default: 'mainnet' },
+    { key: 'networkId', label: 'Network', type: 'networkId', default: 'sepolia' },
     { key: 'startTime', label: 'Start Time (timestamp)', type: 'number', default: 0 },
     { key: 'endTime', label: 'End Time (timestamp)', type: 'number', default: 9999999999 },
     { key: 'orderBy', label: 'Order By', type: 'select', options: ['timestamp', 'block_num'], default: 'timestamp' },
@@ -145,7 +145,7 @@ const configSchemas = {
   ],
   nftCollection: [
     { key: 'contract', label: 'NFT Contract Address', type: 'text', required: true },
-    { key: 'networkId', label: 'Network ID', type: 'select', options: ['mainnet', 'polygon', 'arbitrum', 'optimism'], default: 'mainnet' }
+    { key: 'networkId', label: 'Network', type: 'networkId', default: 'sepolia' }
   ]
 };
 
@@ -154,11 +154,30 @@ export default function BlockConfigPanel({ block, onUpdate, onClose }) {
   const [hasChanges, setHasChanges] = useState(false);
 
   const blockType = blockTypes[block.type];
-  const schema = configSchemas[block.type] || [];
+  const schema = useMemo(() => configSchemas[block.type] || [], [block.type]);
+
+  const applyDefaults = useCallback((cfg) => {
+    const withDefaults = { ...(cfg || {}) };
+    schema.forEach((field) => {
+      if (withDefaults[field.key] === undefined) {
+        if (field.type === 'checkbox') {
+          if (field.default !== undefined) withDefaults[field.key] = field.default;
+        } else if (field.type === 'number') {
+          if (field.default !== undefined) withDefaults[field.key] = field.default;
+        } else if (field.type === 'select' || field.type === 'networkId') {
+          if (field.default !== undefined) withDefaults[field.key] = field.default;
+        } else if (field.type === 'text' && field.default !== undefined) {
+          withDefaults[field.key] = field.default;
+        }
+      }
+    });
+    return withDefaults;
+  }, [schema]);
 
   useEffect(() => {
     console.log('block', block);
-    setConfig(block.config || {});
+    const seeded = applyDefaults(block.config || {});
+    setConfig(seeded);
     setHasChanges(false);
     if (block.type !== 'walletBalance') return;
     const network = config.network || 'mainnet';
@@ -172,7 +191,7 @@ export default function BlockConfigPanel({ block, onUpdate, onClose }) {
         setHasChanges(true);
       }
     }
-  }, [block, block.type, config.network, config.tokenType, config.tokenAddress]);
+  }, [block, block.type, config.network, config.tokenType, config.tokenAddress, applyDefaults]);
 
 
   const handleConfigChange = (key, value) => {
@@ -181,7 +200,8 @@ export default function BlockConfigPanel({ block, onUpdate, onClose }) {
   };
 
   const handleSave = () => {
-    onUpdate({ config });
+    const finalConfig = applyDefaults(config);
+    onUpdate({ config: finalConfig });
     setHasChanges(false);
   };
 
@@ -303,6 +323,13 @@ export default function BlockConfigPanel({ block, onUpdate, onClose }) {
                     </option>
                   ))}
                 </select>
+              )}
+
+              {field.type === 'networkId' && (
+                <NetworkIdSelect
+                  value={config[field.key] || field.default || ''}
+                  onChange={(value) => handleConfigChange(field.key, value)}
+                />
               )}
 
               {field.type === 'textarea' && (

@@ -110,6 +110,25 @@ export default function WorkflowPage({ params }) {
     return s.length > maxLen ? `${s.slice(0, maxLen)}...` : s;
   };
 
+  const networkIdToName = (id) => {
+    const map = { mainnet: 'Ethereum', sepolia: 'Sepolia', polygon: 'Polygon', arbitrum: 'Arbitrum', optimism: 'Optimism' };
+    return map[id] || id;
+  };
+
+  const formatUnitsLoose = (value, decimals = 18) => {
+    try {
+      const v = typeof value === 'string' ? Number(value) : (typeof value === 'number' ? value : 0);
+      if (!isFinite(v)) return '0';
+      const denom = Math.pow(10, Number(decimals) || 0);
+      const num = denom === 0 ? v : v / denom;
+      if (num === 0) return '0';
+      if (num >= 1) return num.toFixed(4).replace(/\.0+$/, '');
+      return num.toPrecision(4);
+    } catch {
+      return String(value ?? '0');
+    }
+  };
+
   const fetchWorkflow = useCallback(async () => {
     try {
       const userId = user?.wallet?.address || user?.id || 'anonymous';
@@ -208,6 +227,22 @@ export default function WorkflowPage({ params }) {
           const short = summarizeBalance(base?.balance, base?.chain || r.blockName);
           const shortAddr = (base?.address || '').slice(0, 6);
           return `Balance (${base?.chain || 'chain'} ${shortAddr ? shortAddr + '...' : ''}): ${short}`;
+        }
+        if (r.blockType === 'balancesByAddress') {
+          const base = r.result?.type ? r.result : r.result;
+          const arr = Array.isArray(base?.data?.data) ? base.data.data : (Array.isArray(base?.data) ? base.data : []);
+          const parts = (arr || []).slice(0, 2).map((it) => {
+            const symbol = it?.symbol || it?.token?.symbol || 'TOKEN';
+            const decimals = it?.decimals ?? it?.token?.decimals ?? 18;
+            const raw = it?.formattedBalance ?? it?.value ?? it?.amount ?? it?.balance ?? 0;
+            const amount = typeof raw === 'string' && raw.includes('.') ? raw : formatUnitsLoose(raw, decimals);
+            return `${amount} ${symbol}`;
+          });
+          const addr = base?.metadata?.address || '';
+          const net = networkIdToName(base?.metadata?.networkId || '');
+          const shortAddr = addr ? `${addr.slice(0, 6)}...` : '';
+          const summary = parts.length ? parts.join(', ') : 'No balances';
+          return `Balances (${net} ${shortAddr}): ${summary}`;
         }
         if (r.blockType === 'walletTransaction' || r.result?.type === 'wallet_transactions') {
           const base = r.result?.type ? r.result : r.result?.result;
@@ -613,6 +648,25 @@ export default function WorkflowPage({ params }) {
 function BlockExecutionCard({ block, index }) {
   const blockType = blockTypes[block.type];
   const Icon = blockType?.icon;
+  
+  const networkIdToName = (id) => {
+    const map = { mainnet: 'Ethereum', sepolia: 'Sepolia', polygon: 'Polygon', arbitrum: 'Arbitrum', optimism: 'Optimism' };
+    return map[id] || id;
+  };
+
+  const formatUnitsLoose = (value, decimals = 18) => {
+    try {
+      const v = typeof value === 'string' ? Number(value) : (typeof value === 'number' ? value : 0);
+      if (!isFinite(v)) return '0';
+      const denom = Math.pow(10, Number(decimals) || 0);
+      const num = denom === 0 ? v : v / denom;
+      if (num === 0) return '0';
+      if (num >= 1) return num.toFixed(4).replace(/\.0+$/, '');
+      return num.toPrecision(4);
+    } catch {
+      return String(value ?? '0');
+    }
+  };
   const formatConfigValue = (key, value) => {
     if (typeof value !== 'string') return String(value ?? '');
     // Shorten long hex/addresses and long strings for display
@@ -669,6 +723,41 @@ function BlockExecutionCard({ block, index }) {
           ))}
         </div>
       </div>
+
+      {/* Result preview for balancesByAddress */}
+      {block.type === 'balancesByAddress' && block.lastResult && (
+        <div className="bg-background/50 rounded-lg p-4 mt-4">
+          <h4 className="text-sm font-medium text-foreground mb-3">Result</h4>
+          {(() => {
+            const res = block.lastResult;
+            const arr = Array.isArray(res?.data?.data) ? res.data.data : (Array.isArray(res?.data) ? res.data : []);
+            if (!arr || arr.length === 0) {
+              return <p className="text-sm text-foreground/60">No balances found.</p>;
+            }
+            const net = networkIdToName(res?.metadata?.networkId || block.config?.networkId || '');
+            return (
+              <div className="space-y-2">
+                <p className="text-sm text-foreground/70">Network: <span className="text-foreground">{net}</span></p>
+                <ul className="text-sm text-foreground/90 space-y-1">
+                  {arr.slice(0, 5).map((it, idx) => {
+                    const symbol = it?.symbol || it?.token?.symbol || 'TOKEN';
+                    const name = it?.name || it?.token?.name || '';
+                    const decimals = it?.decimals ?? it?.token?.decimals ?? 18;
+                    const raw = it?.formattedBalance ?? it?.value ?? it?.amount ?? it?.balance ?? 0;
+                    const amount = typeof raw === 'string' && raw.includes('.') ? raw : formatUnitsLoose(raw, decimals);
+                    return (
+                      <li key={idx} className="flex justify-between">
+                        <span>{name ? `${name} (${symbol})` : symbol}</span>
+                        <span className="font-mono">{amount}</span>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </div>
+            );
+          })()}
+        </div>
+      )}
     </div>
   );
 }
