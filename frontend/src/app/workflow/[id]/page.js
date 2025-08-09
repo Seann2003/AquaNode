@@ -16,6 +16,8 @@ import {
   Activity
 } from 'lucide-react';
 import { blockTypes } from '../../builder/page';
+import { usePrivy } from '@privy-io/react-auth';
+import { getWorkflow as lsGetWorkflow } from '../../services/localWorkflowService';
 import { ChainBadge } from '../../components/ChainLogo';
 
 // Mock workflow data
@@ -83,33 +85,23 @@ const mockWorkflowData = {
 };
 
 export default function WorkflowPage({ params }) {
+  const { authenticated, user } = usePrivy();
   const [workflow, setWorkflow] = useState(null);
   const [isRunning, setIsRunning] = useState(false);
   const [activeTab, setActiveTab] = useState('overview');
 
   const fetchWorkflow = useCallback(async () => {
     try {
-      const response = await fetch(`/api/workflows/${params.id}`);
-      const data = await response.json();
-      
-      if (data.success && data.workflow) {
-        setWorkflow(data.workflow);
-      } else {
-        // Fallback to mock data if not found in database
-        const mockData = mockWorkflowData[params.id];
-        if (mockData) {
-          setWorkflow(mockData);
-        } else {
-          setWorkflow(null);
-        }
-      }
+      const userId = user?.wallet?.address || user?.id || 'anonymous';
+      const local = lsGetWorkflow(userId, params.id);
+      if (local) setWorkflow(local);
+      else setWorkflow(mockWorkflowData[params.id] || null);
     } catch (error) {
       console.error('Error fetching workflow:', error);
-      // Fallback to mock data
-      const mockData = mockWorkflowData[params.id];
-      setWorkflow(mockData || null);
+      const userId = user?.wallet?.address || user?.id || 'anonymous';
+      setWorkflow(lsGetWorkflow(userId, params.id) || mockWorkflowData[params.id] || null);
     }
-  }, [params.id]);
+  }, [params.id, authenticated, user]);
 
   useEffect(() => {
     fetchWorkflow();

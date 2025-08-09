@@ -3,16 +3,28 @@
 import { PrivyProvider as BasePrivyProvider } from '@privy-io/react-auth';
 
 export default function PrivyProvider({ children }) {
+  const appId = process.env.NEXT_PUBLIC_PRIVY_APP_ID;
+  const isValidAppId = typeof appId === 'string' && appId.startsWith('app_pk_');
+
+  if (!isValidAppId) {
+    if (typeof window !== 'undefined') {
+      // eslint-disable-next-line no-console
+      console.warn('Privy disabled: missing NEXT_PUBLIC_PRIVY_APP_ID (expected app_pk_...)');
+    }
+    // Render children without an initialized provider to avoid runtime crashes.
+    return <>{children}</>;
+  }
+
   return (
     <BasePrivyProvider
-      appId={process.env.NEXT_PUBLIC_PRIVY_APP_ID || 'your-privy-app-id'}
+      appId={appId}
       config={{
         // Customize Privy configuration
         loginMethods: ['email', 'google', 'discord', 'twitter'],
         appearance: {
           theme: 'dark',
           accentColor: '#3b82f6',
-          logo: '/logo.png',
+          logo: '/aquanode-logo.svg',
         },
         embeddedWallets: {
           createOnLogin: 'users-without-wallets',

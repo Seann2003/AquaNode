@@ -115,6 +115,29 @@ export default function BlockConfigPanel({ block, onUpdate, onClose }) {
 
   const Icon = blockType.icon;
 
+  const shouldRenderField = (field) => {
+    if (field.key === 'tokenAddress' && block.type === 'walletBalance') {
+      if ((config.network || 'mainnet') !== 'mainnet') return false;
+    }
+    if (!field.conditional) return true;
+    return Object.entries(field.conditional).every(([k, v]) => config[k] === v);
+  };
+
+  useEffect(() => {
+    if (block.type !== 'walletBalance') return;
+    const network = config.network || 'mainnet';
+    if (network !== 'mainnet' && config.tokenType === 'Specific Token') {
+      setConfig(prev => ({ ...prev, tokenType: 'All Tokens' }));
+      setHasChanges(true);
+    }
+    if (network !== 'mainnet' || config.tokenType !== 'Specific Token') {
+      if (config.tokenAddress) {
+        setConfig(prev => ({ ...prev, tokenAddress: '' }));
+        setHasChanges(true);
+      }
+    }
+  }, [block.type, config.network, config.tokenType]);
+
   return (
     <div className="h-full flex flex-col">
       {/* Header */}
@@ -144,7 +167,9 @@ export default function BlockConfigPanel({ block, onUpdate, onClose }) {
       {/* Configuration Form */}
       <div className="flex-1 overflow-y-auto p-4">
         <div className="space-y-4">
-          {schema.map((field) => (
+          {schema.map((field) => {
+            if (!shouldRenderField(field)) return null;
+            return (
             <div key={field.key}>
               <label className="block text-sm font-medium text-foreground mb-2">
                 {field.label}
@@ -202,7 +227,12 @@ export default function BlockConfigPanel({ block, onUpdate, onClose }) {
                   className="w-full px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-foreground"
                 >
                   <option value="">Select {field.label}</option>
-                  {field.options.map((option) => (
+                  {(block.type === 'walletBalance' && field.key === 'tokenType'
+                      ? ((config.network || 'mainnet') === 'mainnet' 
+                          ? field.options 
+                          : field.options.filter(o => o !== 'Specific Token'))
+                      : field.options
+                    ).map((option) => (
                     <option key={option} value={option}>
                       {option}
                     </option>
@@ -232,7 +262,7 @@ export default function BlockConfigPanel({ block, onUpdate, onClose }) {
                 </label>
               )}
             </div>
-          ))}
+          );})}
         </div>
       </div>
 

@@ -17,6 +17,8 @@ import {
   ArrowLeft
 } from 'lucide-react';
 import Link from 'next/link';
+import { usePrivy } from '@privy-io/react-auth';
+import { upsertWorkflow } from '../services/localWorkflowService';
 import BlockPalette from '../components/BlockPalette';
 import WorkflowCanvas from '../components/WorkflowCanvas';
 import BlockConfigPanel from '../components/BlockConfigPanel';
@@ -107,6 +109,7 @@ export const blockTypes = {
 };
 
 function BuilderContent() {
+  const { authenticated, user, login } = usePrivy();
   const searchParams = useSearchParams();
   const editId = searchParams.get('edit');
   const templateId = searchParams.get('template');
@@ -247,6 +250,10 @@ function BuilderContent() {
   const handleSaveWorkflow = async () => {
     setSaving(true);
     try {
+      if (!authenticated) {
+        await login();
+      }
+      const userId = user?.wallet?.address || user?.id || 'anonymous';
       const workflowData = {
         name: workflowName,
         description: workflowDescription,
@@ -259,22 +266,9 @@ function BuilderContent() {
         workflowData.id = currentWorkflowId;
       }
 
-      const response = await fetch('/api/workflows', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(workflowData),
-      });
-
-      const data = await response.json();
-      
-      if (data.success) {
-        setCurrentWorkflowId(data.workflow.id);
-        alert('Workflow saved successfully!');
-      } else {
-        alert('Failed to save workflow');
-      }
+      const saved = upsertWorkflow(userId, workflowData);
+      setCurrentWorkflowId(saved.id);
+      alert('Workflow saved locally!');
     } catch (error) {
       console.error('Error saving workflow:', error);
       alert('Failed to save workflow');
@@ -321,8 +315,8 @@ function BuilderContent() {
         onDragStart={handleDragStart}
         onDragEnd={handleDragEnd}
       >
-        {/* Block Palette */}
-        <div className="w-80 bg-card border-r border-border flex flex-col">
+        {/* Block Palette - fixed left sidebar */}
+        <div className="w-80 bg-card border-r border-border fixed left-0 top-16 h-[calc(100vh-4rem)] z-30 flex flex-col">
           <div className="p-4 border-b border-border">
             <div className="flex items-center justify-between mb-2">
               <h2 className="text-lg font-semibold text-foreground">Blocks</h2>
@@ -340,16 +334,16 @@ function BuilderContent() {
           <BlockPalette blockTypes={blockTypes} />
         </div>
 
-        {/* Main Canvas Area */}
-        <div className="flex-1 flex flex-col">
+        {/* Main Canvas Area (offset for fixed sidebars) */}
+        <div className={`flex-1 flex flex-col min-h-0 ml-80${selectedBlock ? ' mr-80' : ''}`}>
           {/* Toolbar */}
-          <div className="h-16 bg-card border-b border-border flex items-center justify-between px-6">
+          <div className="h-18 bg-card border-b border-border flex items-center justify-between px-6 sticky top-16 z-20">
             <div className="flex items-center space-x-4">
               <input
                 type="text"
                 value={workflowName}
                 onChange={(e) => setWorkflowName(e.target.value)}
-                className="text-lg font-semibold bg-transparent border-none outline-none text-foreground"
+                className="text-lg font-semibold bg-transparent border-none outline-none text-foreground w-full"
                 placeholder="Workflow name"
               />
             </div>
@@ -385,9 +379,9 @@ function BuilderContent() {
           </div>
         </div>
 
-        {/* Configuration Panel */}
+        {/* Configuration Panel - fixed right sidebar, shown on selection */}
         {selectedBlock && (
-          <div className="w-80 bg-card border-l border-border">
+          <div className="w-80 bg-card border-l border-border fixed right-0 top-16 h=[calc(100vh-4rem)] h-[calc(100vh-4rem)] z-30 flex flex-col overflow-y-auto">
             <BlockConfigPanel
               block={selectedBlock}
               onUpdate={(updates) => handleBlockUpdate(selectedBlock.id, updates)}

@@ -3,10 +3,13 @@
 import Link from 'next/link';
 import { Plus, Play, Edit, Trash2, Clock, TrendingUp, Wallet, Coins } from 'lucide-react';
 import { useState, useEffect } from 'react';
+import { usePrivy } from '@privy-io/react-auth';
+import { getAllWorkflows, deleteWorkflow as lsDeleteWorkflow, upsertWorkflow } from './services/localWorkflowService';
 import { ChainBadge } from './components/ChainLogo';
 import { getStaticTemplates, createWorkflowFromTemplate, getTemplateById } from './services/staticTemplates';
 
 export default function Home() {
+  const { authenticated, user, login } = usePrivy();
   const [activeTab, setActiveTab] = useState('workflows');
   const [workflows, setWorkflows] = useState([]);
   const [templates, setTemplates] = useState([]);
@@ -14,29 +17,12 @@ export default function Home() {
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    fetchWorkflows();
+    const userId = user?.wallet?.address || user?.id || 'anonymous';
+    setWorkflows(getAllWorkflows(userId));
     fetchTemplates();
-  }, []);
+  }, [authenticated, user]);
 
-  const fetchWorkflows = async () => {
-    try {
-      const response = await fetch('/api/workflows');
-      const data = await response.json();
-      
-      if (data.success) {
-        setWorkflows(data.workflows);
-      } else {
-        setError('Failed to fetch workflows');
-      }
-    } catch (error) {
-      console.error('Error fetching workflows:', error);
-      setError('Failed to fetch workflows');
-      // Use mock data as fallback
-      setWorkflows(getMockWorkflows());
-    } finally {
-      setLoading(false);
-    }
-  };
+  const fetchWorkflows = async () => {};
 
   const fetchTemplates = async () => {
     try {
@@ -49,11 +35,13 @@ export default function Home() {
       if (data.success) {
         console.log('Setting templates:', data.templates);
         setTemplates(data.templates);
+        setLoading(false);
       } else {
         console.log('API failed, using static templates');
         const staticTemplates = getStaticTemplates();
         console.log('Static templates:', staticTemplates);
         setTemplates(staticTemplates);
+        setLoading(false);
       }
     } catch (error) {
       console.error('Error fetching templates:', error);
@@ -68,15 +56,9 @@ export default function Home() {
     if (!confirm('Are you sure you want to delete this workflow?')) return;
 
     try {
-      const response = await fetch(`/api/workflows/${workflowId}`, {
-        method: 'DELETE',
-      });
-
-      if (response.ok) {
-        setWorkflows(workflows.filter(w => w.id !== workflowId));
-      } else {
-        alert('Failed to delete workflow');
-      }
+      const userId = user?.wallet?.address || user?.id || 'anonymous';
+      lsDeleteWorkflow(userId, workflowId);
+      setWorkflows(getAllWorkflows(userId));
     } catch (error) {
       console.error('Error deleting workflow:', error);
       alert('Failed to delete workflow');
@@ -92,24 +74,10 @@ export default function Home() {
         alert('Failed to create workflow from template');
         return;
       }
-
-      const response = await fetch('/api/workflows', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(newWorkflow),
-      });
-
-      const data = await response.json();
-      
-      if (data.success) {
-        // Redirect to builder with the new workflow
-        window.location.href = `/builder?edit=${data.workflow.id}`;
-      } else {
-        // If API fails, redirect to builder with template ID
-        window.location.href = `/builder?template=${template.id}`;
-      }
+      const userId = user?.wallet?.address || user?.id || 'anonymous';
+      if (!authenticated) await login();
+      const saved = upsertWorkflow(userId, newWorkflow);
+      window.location.href = `/builder?edit=${saved.id}`;
     } catch (error) {
       console.error('Error creating workflow from template:', error);
       // Fallback: redirect to builder with template ID
@@ -140,6 +108,11 @@ export default function Home() {
             <p className="text-foreground/70 mt-2">
               with power of data (The Graph, Coingecko API) and AI agents across chains
             </p>
+            {!authenticated && (
+              <p className="text-foreground/60 mt-2 text-sm">
+                Connect your wallet to view and save your workflows locally on this device.
+              </p>
+            )}
           </div>
           <Link
             href="/builder"
