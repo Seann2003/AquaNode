@@ -122,7 +122,7 @@ const configSchemas = {
     { key: 'page', label: 'Page', type: 'number', default: 1, min: 1 }
   ],
   tokenMetadata: [
-    { key: 'contract', label: 'Token Contract Address', type: 'text', required: true },
+    { key: 'contract', label: 'Token Contract Address', type: 'text', required: true, placeholder: 'e.g. 0xc944e90c64b2c07662a292be6244bdf05cda44a7 (GRT)', default: '0xc944e90c64b2c07662a292be6244bdf05cda44a7' },
     { key: 'networkId', label: 'Network', type: 'networkId', default: 'mainnet' }
   ],
   liquidityPools: [
@@ -132,8 +132,15 @@ const configSchemas = {
   ],
   swapEvents: [
     { key: 'networkId', label: 'Network', type: 'networkId', default: 'mainnet' },
-    { key: 'startTime', label: 'Start Time (timestamp)', type: 'number', default: 0 },
-    { key: 'endTime', label: 'End Time (timestamp)', type: 'number', default: 9999999999 },
+    { key: 'timePreset', label: 'Time Range', type: 'select', options: ['Last 1h', 'Last 24h', 'Last 7d', 'Last 30d', 'All'], default: 'Last 24h' },
+    { key: 'pool', label: 'Pool Address (optional)', type: 'text', placeholder: '0x...' },
+    { key: 'protocol', label: 'Protocol (optional)', type: 'select', options: ['uniswap_v2', 'uniswap_v3', 'uniswap_v4'], default: '' },
+    { key: 'caller', label: 'Caller (optional)', type: 'text', placeholder: '0x...' },
+    { key: 'sender', label: 'Sender (optional)', type: 'text', placeholder: '0x...' },
+    { key: 'recipient', label: 'Recipient (optional)', type: 'text', placeholder: '0x...' },
+    { key: 'transactionId', label: 'Transaction ID (optional)', type: 'text', placeholder: '0x...' },
+    { key: 'startTime', label: 'Start Time (UNIX seconds)', type: 'number', placeholder: 'Optional (auto-filled by Time Range)' },
+    { key: 'endTime', label: 'End Time (UNIX seconds)', type: 'number', placeholder: 'Optional (auto-filled by Time Range)' },
     { key: 'orderBy', label: 'Order By', type: 'select', options: ['timestamp', 'block_num'], default: 'timestamp' },
     { key: 'orderDirection', label: 'Order Direction', type: 'select', options: ['desc', 'asc'], default: 'desc' },
     { key: 'limit', label: 'Limit', type: 'number', default: 10, max: 100 },
@@ -198,6 +205,21 @@ export default function BlockConfigPanel({ block, onUpdate, onClose }) {
       const start = ranges[preset] ?? (seeded.startTime || 0);
       const end = preset === 'All' ? 9999999999 : now;
       setConfig(prev => ({ ...prev, startTime: seeded.startTime || start, endTime: seeded.endTime || end }));
+    }
+    if (block.type === 'transferEvents' || block.type === 'swapEvents') {
+      const seededCfg = seeded;
+      const preset = (seededCfg.timePreset || 'Last 24h');
+      const now = Math.floor(Date.now() / 1000);
+      const ranges = {
+        'Last 1h': now - 60 * 60,
+        'Last 24h': now - 24 * 60 * 60,
+        'Last 7d': now - 7 * 24 * 60 * 60,
+        'Last 30d': now - 30 * 24 * 60 * 60,
+        'All': 0,
+      };
+      const start = ranges[preset] ?? (seededCfg.startTime || 0);
+      const end = preset === 'All' ? 9999999999 : now;
+      setConfig(prev => ({ ...prev, startTime: seededCfg.startTime || start, endTime: seededCfg.endTime || end }));
     }
     if (block.type !== 'walletBalance') return;
     const network = config.network || 'mainnet';

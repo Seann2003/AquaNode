@@ -20,7 +20,7 @@ import { usePrivy } from '@privy-io/react-auth';
 import { useRouter } from 'next/navigation';
 import { getWorkflow as lsGetWorkflow, upsertWorkflow as lsUpsertWorkflow } from '../../services/localWorkflowService';
 import WorkflowEngine from '../../services/workflowEngine';
-import { ChainBadge } from '../../components/ChainLogo';
+import { ChainBadge, GraphNetworkBadge } from '../../components/ChainLogo';
 
 // Mock workflow data
 const mockWorkflowData = {
@@ -746,10 +746,10 @@ function BlockExecutionCard({ block, index }) {
             if (!arr || arr.length === 0) {
               return <p className="text-sm text-foreground/60">No balances found.</p>;
             }
-            const net = networkIdToName(res?.metadata?.networkId || block.config?.networkId || '');
+            const netId = res?.metadata?.networkId || block.config?.networkId || '';
             return (
               <div className="space-y-2">
-                <p className="text-sm text-foreground/70">Network: <span className="text-foreground">{net}</span></p>
+                <div className="flex items-center space-x-2"><span className="text-sm text-foreground/70">Network:</span><GraphNetworkBadge networkId={netId} /></div>
                 <ul className="text-sm text-foreground/90 space-y-1">
                   {arr.slice(0, 5).map((it, idx) => {
                     const symbol = it?.symbol || it?.token?.symbol || 'TOKEN';
@@ -770,6 +770,48 @@ function BlockExecutionCard({ block, index }) {
           })()}
         </div>
       )}
+      {/* Result preview for tokenMetadata */}
+      {block.type === 'tokenMetadata' && block.lastResult && (
+        <div className="bg-background/50 rounded-lg p-4 mt-4">
+          <h4 className="text-sm font-medium text-foreground mb-3">Result</h4>
+          {(() => {
+            const res = block.lastResult;
+            const arr = Array.isArray(res?.data?.data) ? res.data.data : (Array.isArray(res?.data) ? res.data : []);
+            if (!arr || arr.length === 0) {
+              return <p className="text-sm text-foreground/60">No token metadata found.</p>;
+            }
+            const it = arr[0];
+            const net = networkIdToName(res?.metadata?.networkId || block.config?.networkId || '');
+            return (
+              <div className="space-y-2">
+                <p className="text-sm text-foreground/70">Network: <span className="text-foreground">{net}</span></p>
+                <div className="grid grid-cols-2 gap-2 text-sm text-foreground/90">
+                  <div>
+                    <div className="text-foreground/70">Symbol</div>
+                    <div className="font-mono">{it?.symbol || '—'}</div>
+                  </div>
+                  <div>
+                    <div className="text-foreground/70">Name</div>
+                    <div>{it?.name || '—'}</div>
+                  </div>
+                  <div>
+                    <div className="text-foreground/70">Decimals</div>
+                    <div className="font-mono">{it?.decimals ?? 18}</div>
+                  </div>
+                  <div>
+                    <div className="text-foreground/70">Holders</div>
+                    <div className="font-mono">{it?.holders ?? '—'}</div>
+                  </div>
+                  <div className="col-span-2">
+                    <div className="text-foreground/70">Contract</div>
+                    <div className="font-mono break-all">{it?.contract || res?.metadata?.contract || block.config?.contract}</div>
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
+        </div>
+      )}
       {/* Result preview for transferEvents */}
       {block.type === 'transferEvents' && block.lastResult && (
         <div className="bg-background/50 rounded-lg p-4 mt-4">
@@ -780,15 +822,42 @@ function BlockExecutionCard({ block, index }) {
             if (!arr || arr.length === 0) {
               return <p className="text-sm text-foreground/60">No transfers found.</p>;
             }
-            const net = networkIdToName(res?.metadata?.networkId || block.config?.networkId || '');
+            const netId = res?.metadata?.networkId || block.config?.networkId || '';
             return (
               <div className="space-y-2">
-                <p className="text-sm text-foreground/70">Network: <span className="text-foreground">{net}</span></p>
+                <div className="flex items-center space-x-2"><span className="text-sm text-foreground/70">Network:</span><GraphNetworkBadge networkId={netId} /></div>
                 <ul className="text-sm text-foreground/90 space-y-1">
                   {arr.slice(0, 5).map((it, idx) => (
                     <li key={idx} className="flex justify-between">
                       <span className="truncate mr-2">{(it?.symbol || 'TOKEN')} • {it?.from?.slice(0,6)}… → {it?.to?.slice(0,6)}…</span>
                       <span className="font-mono">{it?.value ?? it?.amount ?? '0'}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            );
+          })()}
+        </div>
+      )}
+      {/* Result preview for swapEvents */}
+      {block.type === 'swapEvents' && block.lastResult && (
+        <div className="bg-background/50 rounded-lg p-4 mt-4">
+          <h4 className="text-sm font-medium text-foreground mb-3">Result</h4>
+          {(() => {
+            const res = block.lastResult;
+            const arr = Array.isArray(res?.data?.data) ? res.data.data : (Array.isArray(res?.data) ? res.data : []);
+            if (!arr || arr.length === 0) {
+              return <p className="text-sm text-foreground/60">No swaps found.</p>;
+            }
+            const netId = res?.metadata?.networkId || block.config?.networkId || '';
+            return (
+              <div className="space-y-2">
+                <div className="flex items-center space-x-2"><span className="text-sm text-foreground/70">Network:</span><GraphNetworkBadge networkId={netId} /></div>
+                <ul className="text-sm text-foreground/90 space-y-1">
+                  {arr.slice(0, 5).map((it, idx) => (
+                    <li key={idx} className="flex justify-between">
+                      <span className="truncate mr-2">{it?.protocol?.replace('_', ' ') || 'uniswap'} • {it?.token0?.symbol || 'T0'}/{it?.token1?.symbol || 'T1'}</span>
+                      <span className="font-mono">{(it?.value0 ?? it?.amount0 ?? '0')}/{(it?.value1 ?? it?.amount1 ?? '0')}</span>
                     </li>
                   ))}
                 </ul>

@@ -168,7 +168,7 @@ class TheGraphService {
     return await this.makeRequest(endpoint, params);
   }
 
-  async getSwapEvents(networkId = 'mainnet', startTime = 0, endTime = 9999999999, orderBy = 'timestamp', orderDirection = 'desc', limit = 10, page = 1) {
+  async getSwapEvents(networkId = 'mainnet', startTime = 0, endTime = 9999999999, orderBy = 'timestamp', orderDirection = 'desc', limit = 10, page = 1, filters = {}) {
     const endpoint = '/swaps/evm';
     const params = {
       network_id: networkId,
@@ -177,7 +177,8 @@ class TheGraphService {
       orderBy,
       orderDirection,
       limit,
-      page
+      page,
+      ...filters
     };
 
     return await this.makeRequest(endpoint, params);

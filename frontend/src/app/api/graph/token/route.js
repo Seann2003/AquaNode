@@ -92,7 +92,7 @@ export async function POST(request) {
         break;
       }
       case 'swapEvents': {
-        const { networkId, startTime, endTime, orderBy, orderDirection, limit, page } = params;
+        const { networkId, startTime, endTime, orderBy, orderDirection, limit, page, pool, caller, sender, recipient, protocol, transactionId } = params;
         data = await callTokenApi('/swaps/evm', {
           network_id: networkId,
           startTime,
@@ -100,7 +100,13 @@ export async function POST(request) {
           orderBy,
           orderDirection,
           limit,
-          page
+          page,
+          pool,
+          caller,
+          sender,
+          recipient,
+          protocol,
+          transaction_id: transactionId
         }, apiKey);
         break;
       }

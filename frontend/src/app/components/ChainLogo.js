@@ -152,3 +152,51 @@ export function ChainBadge({ chain, size = 'sm' }) {
     </div>
   );
 }
+
+// Badge for The Graph Token API EVM network_ids
+export function GraphNetworkBadge({ networkId, size = 'sm' }) {
+  const sizeClasses = {
+    xs: 'px-1.5 py-0.5 text-xs',
+    sm: 'px-2 py-1 text-xs',
+    md: 'px-3 py-1.5 text-sm',
+    lg: 'px-4 py-2 text-base'
+  };
+
+  const logoSize = { xs: 12, sm: 16, md: 20, lg: 24 };
+
+  const idToName = {
+    'mainnet': 'Ethereum',
+    'arbitrum-one': 'Arbitrum One',
+    'avalanche': 'Avalanche',
+    'base': 'Base',
+    'bsc': 'BNB Smart Chain',
+    'matic': 'Polygon',
+    'optimism': 'Optimism',
+    'unichain': 'Unichain',
+  };
+
+  // Map network_id to a ChainLogo key for the icon
+  const idToLogoChain = {
+    'mainnet': 'Ethereum',
+    'arbitrum-one': 'Arbitrum',
+    'matic': 'Polygon',
+    'optimism': 'Optimism',
+  };
+
+  const networkName = idToName[networkId] || (networkId || 'Network');
+  const logoChain = idToLogoChain[networkId] || networkName;
+
+  const networkColors = {
+    'mainnet': 'bg-indigo-500/20 text-indigo-400 border-indigo-500/30',
+    'arbitrum-one': 'bg-blue-500/20 text-blue-400 border-blue-500/30',
+    'matic': 'bg-purple-500/20 text-purple-400 border-purple-500/30',
+    'optimism': 'bg-red-500/20 text-red-400 border-red-500/30',
+  };
+
+  return (
+    <div className={`inline-flex items-center space-x-1.5 rounded-full border ${sizeClasses[size]} ${networkColors[networkId] || 'bg-gray-500/20 text-gray-400 border-gray-500/30'}`}>
+      <ChainLogo chain={logoChain} size={logoSize[size]} />
+      <span className="font-medium">{networkName}</span>
+    </div>
+  );
+}
