@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { X, Save } from 'lucide-react';
-import { blockTypes } from '../builder/page';
+import { blockTypes } from '../lib/blockTypes';
 import ChainSelect, {
   PriceSourceSelect,
   NetworkSelect,

@@ -2,7 +2,7 @@
 
 import { useDroppable } from '@dnd-kit/core';
 import { Settings, Trash2, ArrowDown } from 'lucide-react';
-import { blockTypes } from '../builder/page';
+import { blockTypes } from '../lib/blockTypes';
 import ChainLogo from './ChainLogo';
 
 export default function WorkflowCanvas({ 

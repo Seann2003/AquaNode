@@ -15,7 +15,7 @@ import {
   BarChart3,
   Activity,
 } from 'lucide-react';
-import { blockTypes } from '../../builder/page';
+import { blockTypes } from '../../lib/blockTypes';
 import { usePrivy } from '@privy-io/react-auth';
 import { useRouter } from 'next/navigation';
 import {
