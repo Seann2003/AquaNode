@@ -833,15 +833,7 @@ class WorkflowEngine {
   }
 
   async executeTransferEventsBlock(block, context) {
-    const {
-      networkId,
-      startTime,
-      endTime,
-      orderBy,
-      orderDirection,
-      limit,
-      page,
-    } = block.config;
+    const { networkId, startTime, endTime, orderBy, orderDirection, limit, page, from, to, contract, transactionId, timePreset } = block.config;
 
     try {
       const result = await this.theGraphService.getTransferEvents(
@@ -851,10 +843,10 @@ class WorkflowEngine {
         orderBy || 'timestamp',
         orderDirection || 'desc',
         limit || 10,
-        page || 1
+        page || 1,
+        { from, to, contract, transaction_id: transactionId }
       );
-
-      return {
+      const shaped = {
         success: true,
         data: result.data,
         metadata: {
@@ -865,14 +857,17 @@ class WorkflowEngine {
           orderDirection: orderDirection || 'desc',
           limit: limit || 10,
           page: page || 1,
-          totalResults: result.data?.length || 0,
-        },
+          from, to, contract, transactionId,
+          timePreset: timePreset || 'Last 24h',
+          totalResults: result.data?.length || 0
+        }
       };
+      block.lastResult = shaped;
+      return shaped;
     } catch (error) {
-      return {
-        success: false,
-        error: error.message,
-      };
+      const shaped = { success: false, error: error.message };
+      block.lastResult = shaped;
+      return shaped;
     }
   }
 
@@ -928,7 +923,7 @@ class WorkflowEngine {
         networkId || 'mainnet'
       );
 
-      return {
+      const shaped = {
         success: true,
         data: result.data,
         metadata: {
@@ -936,11 +931,12 @@ class WorkflowEngine {
           networkId: networkId || 'mainnet',
         },
       };
+      block.lastResult = shaped;
+      return shaped;
     } catch (error) {
-      return {
-        success: false,
-        error: error.message,
-      };
+      const shaped = { success: false, error: error.message };
+      block.lastResult = shaped;
+      return shaped;
     }
   }
 
@@ -973,15 +969,7 @@ class WorkflowEngine {
   }
 
   async executeSwapEventsBlock(block, context) {
-    const {
-      networkId,
-      startTime,
-      endTime,
-      orderBy,
-      orderDirection,
-      limit,
-      page,
-    } = block.config;
+    const { networkId, startTime, endTime, orderBy, orderDirection, limit, page, pool, caller, sender, recipient, protocol, transactionId, timePreset } = block.config;
 
     try {
       const result = await this.theGraphService.getSwapEvents(
@@ -991,10 +979,11 @@ class WorkflowEngine {
         orderBy || 'timestamp',
         orderDirection || 'desc',
         limit || 10,
-        page || 1
+        page || 1,
+        { pool, caller, sender, recipient, protocol, transaction_id: transactionId }
       );
 
-      return {
+      const shaped = {
         success: true,
         data: result.data,
         metadata: {
@@ -1005,14 +994,17 @@ class WorkflowEngine {
           orderDirection: orderDirection || 'desc',
           limit: limit || 10,
           page: page || 1,
-          totalResults: result.data?.length || 0,
-        },
+          pool, caller, sender, recipient, protocol, transactionId,
+          timePreset: timePreset || 'Last 24h',
+          totalResults: result.data?.length || 0
+        }
       };
+      block.lastResult = shaped;
+      return shaped;
     } catch (error) {
-      return {
-        success: false,
-        error: error.message,
-      };
+      const shaped = { success: false, error: error.message };
+      block.lastResult = shaped;
+      return shaped;
     }
   }
 

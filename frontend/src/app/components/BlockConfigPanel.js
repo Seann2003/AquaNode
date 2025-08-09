@@ -400,191 +400,70 @@ const configSchemas = {
   ],
   balancesByAddress: [
     { key: 'address', label: 'Wallet Address', type: 'text', required: true },
-    {
-      key: 'networkId',
-      label: 'Network',
-      type: 'networkId',
-      default: 'sepolia',
-    },
+    { key: 'networkId', label: 'Network', type: 'networkId', default: 'mainnet' },
     { key: 'limit', label: 'Limit', type: 'number', default: 10, max: 100 },
     { key: 'page', label: 'Page', type: 'number', default: 1, min: 1 },
   ],
   transferEvents: [
-    {
-      key: 'networkId',
-      label: 'Network',
-      type: 'networkId',
-      default: 'sepolia',
-    },
-    {
-      key: 'startTime',
-      label: 'Start Time (timestamp)',
-      type: 'number',
-      default: 0,
-    },
-    {
-      key: 'endTime',
-      label: 'End Time (timestamp)',
-      type: 'number',
-      default: 9999999999,
-    },
-    {
-      key: 'orderBy',
-      label: 'Order By',
-      type: 'select',
-      options: ['timestamp', 'block_num'],
-      default: 'timestamp',
-    },
-    {
-      key: 'orderDirection',
-      label: 'Order Direction',
-      type: 'select',
-      options: ['desc', 'asc'],
-      default: 'desc',
-    },
+    { key: 'networkId', label: 'Network', type: 'networkId', default: 'mainnet' },
+    { key: 'timePreset', label: 'Time Range', type: 'select', options: ['Last 1h', 'Last 24h', 'Last 7d', 'Last 30d', 'All'], default: 'Last 24h' },
+    { key: 'from', label: 'From Address (optional)', type: 'text', placeholder: '0x...' },
+    { key: 'to', label: 'To Address (optional)', type: 'text', placeholder: '0x...' },
+    { key: 'contract', label: 'Token Contract (optional)', type: 'text', placeholder: '0x...' },
+    { key: 'transactionId', label: 'Transaction ID (optional)', type: 'text', placeholder: '0x...' },
+    { key: 'startTime', label: 'Start Time (UNIX seconds)', type: 'number', placeholder: 'Optional (auto-filled by Time Range)' },
+    { key: 'endTime', label: 'End Time (UNIX seconds)', type: 'number', placeholder: 'Optional (auto-filled by Time Range)' },
+    { key: 'orderBy', label: 'Order By', type: 'select', options: ['timestamp', 'block_num'], default: 'timestamp' },
+    { key: 'orderDirection', label: 'Order Direction', type: 'select', options: ['desc', 'asc'], default: 'desc' },
     { key: 'limit', label: 'Limit', type: 'number', default: 10, max: 100 },
     { key: 'page', label: 'Page', type: 'number', default: 1, min: 1 },
   ],
   tokenHolders: [
-    {
-      key: 'contract',
-      label: 'Token Contract Address',
-      type: 'text',
-      required: true,
-    },
-    {
-      key: 'networkId',
-      label: 'Network',
-      type: 'networkId',
-      default: 'sepolia',
-    },
-    {
-      key: 'orderBy',
-      label: 'Order By',
-      type: 'select',
-      options: ['value', 'amount'],
-      default: 'value',
-    },
-    {
-      key: 'orderDirection',
-      label: 'Order Direction',
-      type: 'select',
-      options: ['desc', 'asc'],
-      default: 'desc',
-    },
+    { key: 'contract', label: 'Token Contract Address', type: 'text', required: true },
+    { key: 'networkId', label: 'Network', type: 'networkId', default: 'mainnet' },
+    { key: 'orderBy', label: 'Order By', type: 'select', options: ['value', 'amount'], default: 'value' },
+    { key: 'orderDirection', label: 'Order Direction', type: 'select', options: ['desc', 'asc'], default: 'desc' },
     { key: 'limit', label: 'Limit', type: 'number', default: 10, max: 100 },
     { key: 'page', label: 'Page', type: 'number', default: 1, min: 1 },
   ],
   tokenMetadata: [
-    {
-      key: 'contract',
-      label: 'Token Contract Address',
-      type: 'text',
-      required: true,
-    },
-    {
-      key: 'networkId',
-      label: 'Network',
-      type: 'networkId',
-      default: 'sepolia',
-    },
+    { key: 'contract', label: 'Token Contract Address', type: 'text', required: true, placeholder: 'e.g. 0xc944e90c64b2c07662a292be6244bdf05cda44a7 (GRT)', default: '0xc944e90c64b2c07662a292be6244bdf05cda44a7' },
+    { key: 'networkId', label: 'Network', type: 'networkId', default: 'mainnet' }
   ],
   liquidityPools: [
-    {
-      key: 'networkId',
-      label: 'Network',
-      type: 'networkId',
-      default: 'sepolia',
-    },
+    { key: 'networkId', label: 'Network', type: 'networkId', default: 'mainnet' },
     { key: 'limit', label: 'Limit', type: 'number', default: 10, max: 100 },
     { key: 'page', label: 'Page', type: 'number', default: 1, min: 1 },
   ],
   swapEvents: [
-    {
-      key: 'networkId',
-      label: 'Network',
-      type: 'networkId',
-      default: 'sepolia',
-    },
-    {
-      key: 'startTime',
-      label: 'Start Time (timestamp)',
-      type: 'number',
-      default: 0,
-    },
-    {
-      key: 'endTime',
-      label: 'End Time (timestamp)',
-      type: 'number',
-      default: 9999999999,
-    },
-    {
-      key: 'orderBy',
-      label: 'Order By',
-      type: 'select',
-      options: ['timestamp', 'block_num'],
-      default: 'timestamp',
-    },
-    {
-      key: 'orderDirection',
-      label: 'Order Direction',
-      type: 'select',
-      options: ['desc', 'asc'],
-      default: 'desc',
-    },
+    { key: 'networkId', label: 'Network', type: 'networkId', default: 'mainnet' },
+    { key: 'timePreset', label: 'Time Range', type: 'select', options: ['Last 1h', 'Last 24h', 'Last 7d', 'Last 30d', 'All'], default: 'Last 24h' },
+    { key: 'pool', label: 'Pool Address (optional)', type: 'text', placeholder: '0x...' },
+    { key: 'protocol', label: 'Protocol (optional)', type: 'select', options: ['uniswap_v2', 'uniswap_v3', 'uniswap_v4'], default: '' },
+    { key: 'caller', label: 'Caller (optional)', type: 'text', placeholder: '0x...' },
+    { key: 'sender', label: 'Sender (optional)', type: 'text', placeholder: '0x...' },
+    { key: 'recipient', label: 'Recipient (optional)', type: 'text', placeholder: '0x...' },
+    { key: 'transactionId', label: 'Transaction ID (optional)', type: 'text', placeholder: '0x...' },
+    { key: 'startTime', label: 'Start Time (UNIX seconds)', type: 'number', placeholder: 'Optional (auto-filled by Time Range)' },
+    { key: 'endTime', label: 'End Time (UNIX seconds)', type: 'number', placeholder: 'Optional (auto-filled by Time Range)' },
+    { key: 'orderBy', label: 'Order By', type: 'select', options: ['timestamp', 'block_num'], default: 'timestamp' },
+    { key: 'orderDirection', label: 'Order Direction', type: 'select', options: ['desc', 'asc'], default: 'desc' },
     { key: 'limit', label: 'Limit', type: 'number', default: 10, max: 100 },
     { key: 'page', label: 'Page', type: 'number', default: 1, min: 1 },
   ],
   nftActivities: [
-    {
-      key: 'networkId',
-      label: 'Network',
-      type: 'networkId',
-      default: 'sepolia',
-    },
-    {
-      key: 'startTime',
-      label: 'Start Time (timestamp)',
-      type: 'number',
-      default: 0,
-    },
-    {
-      key: 'endTime',
-      label: 'End Time (timestamp)',
-      type: 'number',
-      default: 9999999999,
-    },
-    {
-      key: 'orderBy',
-      label: 'Order By',
-      type: 'select',
-      options: ['timestamp', 'block_num'],
-      default: 'timestamp',
-    },
-    {
-      key: 'orderDirection',
-      label: 'Order Direction',
-      type: 'select',
-      options: ['desc', 'asc'],
-      default: 'desc',
-    },
+    { key: 'networkId', label: 'Network', type: 'networkId', default: 'mainnet' },
+    { key: 'startTime', label: 'Start Time (timestamp)', type: 'number', default: 0 },
+    { key: 'endTime', label: 'End Time (timestamp)', type: 'number', default: 9999999999 },
+    { key: 'orderBy', label: 'Order By', type: 'select', options: ['timestamp', 'block_num'], default: 'timestamp' },
+    { key: 'orderDirection', label: 'Order Direction', type: 'select', options: ['desc', 'asc'], default: 'desc' },
     { key: 'limit', label: 'Limit', type: 'number', default: 10, max: 100 },
     { key: 'page', label: 'Page', type: 'number', default: 1, min: 1 },
   ],
   nftCollection: [
-    {
-      key: 'contract',
-      label: 'NFT Contract Address',
-      type: 'text',
-      required: true,
-    },
-    {
-      key: 'networkId',
-      label: 'Network',
-      type: 'networkId',
-      default: 'sepolia',
-    },
-  ],
+    { key: 'contract', label: 'NFT Contract Address', type: 'text', required: true },
+    { key: 'networkId', label: 'Network', type: 'networkId', default: 'mainnet' }
+  ]
 };
 
 export default function BlockConfigPanel({ block, onUpdate, onClose }) {
@@ -623,6 +502,36 @@ export default function BlockConfigPanel({ block, onUpdate, onClose }) {
     const seeded = applyDefaults(block.config || {});
     setConfig(seeded);
     setHasChanges(false);
+    // Autofill time range for transferEvents based on preset
+    if (block.type === 'transferEvents') {
+      const preset = (seeded.timePreset || 'Last 24h');
+      const now = Math.floor(Date.now() / 1000);
+      const ranges = {
+        'Last 1h': now - 60 * 60,
+        'Last 24h': now - 24 * 60 * 60,
+        'Last 7d': now - 7 * 24 * 60 * 60,
+        'Last 30d': now - 30 * 24 * 60 * 60,
+        'All': 0,
+      };
+      const start = ranges[preset] ?? (seeded.startTime || 0);
+      const end = preset === 'All' ? 9999999999 : now;
+      setConfig(prev => ({ ...prev, startTime: seeded.startTime || start, endTime: seeded.endTime || end }));
+    }
+    if (block.type === 'transferEvents' || block.type === 'swapEvents') {
+      const seededCfg = seeded;
+      const preset = (seededCfg.timePreset || 'Last 24h');
+      const now = Math.floor(Date.now() / 1000);
+      const ranges = {
+        'Last 1h': now - 60 * 60,
+        'Last 24h': now - 24 * 60 * 60,
+        'Last 7d': now - 7 * 24 * 60 * 60,
+        'Last 30d': now - 30 * 24 * 60 * 60,
+        'All': 0,
+      };
+      const start = ranges[preset] ?? (seededCfg.startTime || 0);
+      const end = preset === 'All' ? 9999999999 : now;
+      setConfig(prev => ({ ...prev, startTime: seededCfg.startTime || start, endTime: seededCfg.endTime || end }));
+    }
     if (block.type !== 'walletBalance') return;
     const network = config.network || 'mainnet';
     if (network !== 'mainnet' && config.tokenType === 'Specific Token') {

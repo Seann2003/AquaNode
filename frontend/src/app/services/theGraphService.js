@@ -59,7 +59,7 @@ class TheGraphService {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer 60e2bbfebe6791907e1aab20d03ae813`,
+          'Authorization': `Bearer ${this.subgraphApiKey}`,
         },
         body: JSON.stringify({ query }),
       });
@@ -285,6 +285,46 @@ class TheGraphService {
     limit = 10,
     page = 1
   ) {
+    // Ensure parameters are within valid ranges
+    limit = Math.min(1000, Math.max(1, limit));
+    page = Math.max(1, page);
+
+    // Token API supported networks (per docs)
+    const supportedNetworks = new Set([
+      'arbitrum-one',
+      'avalanche',
+      'base',
+      'bsc',
+      'mainnet',
+      'matic',
+      'optimism',
+      'unichain',
+    ]);
+
+    if (!supportedNetworks.has(networkId)) {
+      throw new Error(`Unsupported network_id "${networkId}" for Token API. Use one of: ${Array.from(supportedNetworks).join(', ')}`);
+    }
+
+    // If running in the browser, route through our Next.js API to avoid CORS and keep key server-side
+    if (typeof window !== 'undefined') {
+      const response = await fetch('/api/graph/token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'balancesByAddress',
+          params: { address, networkId, limit, page }
+        })
+      });
+
+      const result = await response.json();
+      if (!response.ok || !result?.success) {
+        const message = result?.error || `Failed to fetch balances (${response.status})`;
+        throw new Error(message);
+      }
+      return result.data;
+    }
+
+    // Server-side can call Token API directly
     const endpoint = `/balances/evm/${address}`;
     const params = {
       network_id: networkId,
@@ -313,6 +353,7 @@ class TheGraphService {
       orderDirection,
       limit,
       page,
+      ...filters
     };
 
     return await this.makeRequest(endpoint, params);
@@ -436,6 +477,7 @@ class TheGraphService {
       orderDirection,
       limit,
       page,
+      ...filters
     };
 
     return await this.makeRequest(endpoint, params);
