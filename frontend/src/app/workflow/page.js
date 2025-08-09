@@ -3,13 +3,15 @@
 import Link from 'next/link';
 import { Plus, Play, Edit, Trash2, Clock, TrendingUp, Wallet, Coins } from 'lucide-react';
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { usePrivy } from '@privy-io/react-auth';
 import { getAllWorkflows, deleteWorkflow as lsDeleteWorkflow, upsertWorkflow } from '../services/localWorkflowService';
 import { ChainBadge } from '../components/ChainLogo';
 import { getStaticTemplates, createWorkflowFromTemplate } from '../services/staticTemplates';
 
 export default function WorkflowsHome() {
-  const { authenticated, user, login } = usePrivy();
+  const { authenticated, user, login, ready } = usePrivy();
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState('workflows');
   const [workflows, setWorkflows] = useState([]);
   const [templates, setTemplates] = useState([]);
@@ -17,10 +19,14 @@ export default function WorkflowsHome() {
   const [error, setError] = useState(null);
 
   useEffect(() => {
+    if (ready && !authenticated) {
+      router.replace('/');
+      return;
+    }
     const userId = user?.wallet?.address || user?.id || 'anonymous';
     setWorkflows(getAllWorkflows(userId));
     fetchTemplates();
-  }, [authenticated, user]);
+  }, [authenticated, user, ready, router]);
 
   const fetchTemplates = async () => {
     try {
@@ -62,10 +68,15 @@ export default function WorkflowsHome() {
       const userId = user?.wallet?.address || user?.id || 'anonymous';
       if (!authenticated) await login();
       const saved = upsertWorkflow(userId, newWorkflow);
-      window.location.href = `/builder?edit=${saved.id}`;
+      // Redirect to the workflow detail page to fill in required fields,
+      // instead of loading builder which may fetch from API
+      window.location.href = `/workflow/${saved.id}`;
     } catch (error) {
       console.error('Error creating workflow from template:', error);
-      window.location.href = `/builder?template=${template.id}`;
+      // As a fallback, still redirect to detail page copy
+      const userId = user?.wallet?.address || user?.id || 'anonymous';
+      const saved = upsertWorkflow(userId, createWorkflowFromTemplate(template));
+      window.location.href = `/workflow/${saved.id}`;
     }
   };
 

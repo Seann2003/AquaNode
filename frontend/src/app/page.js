@@ -54,7 +54,7 @@ export default function Landing() {
                 Automate DeFi across chains with AI-powered workflows
               </h1>
               <p className="text-lg text-foreground/70 mb-8">
-                Build make.com-style flows for Web3. Research wallets and
+                Build visual workflows for Web3. Research wallets and
                 tokens, add conditions, and trigger staking or swaps on Sui and
                 Oasis.
               </p>
@@ -63,7 +63,7 @@ export default function Landing() {
                 <button
                   onClick={handlePrimary}
                   disabled={!ready}
-                  className="inline-flex items-center space-x-2 px-5 py-3 rounded-lg bg-primary hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed text-white transition-colors"
+                  className="cursor-pointer inline-flex items-center space-x-2 px-5 py-3 rounded-lg bg-primary hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed text-white transition-colors"
                 >
                   <ArrowRight className="w-4 h-4" />
                   <span>

@@ -22,24 +22,36 @@ class BlockchainService {
   }
 
   // Unified Wallet Operations
-  async getWalletBalance(chain, address, tokenType = 'All Tokens', tokenAddress = null) {
+  async getWalletBalance(chain, address, tokenType = 'All Tokens', tokenAddress = null, options = {}) {
     const service = this.getService(chain);
+    if (chain === 'Oasis Sapphire' && typeof service.setNetwork === 'function') {
+      service.setNetwork(options.network);
+    }
     return await service.getWalletBalance(address, tokenType, tokenAddress);
   }
 
-  async getWalletTransactions(chain, address, limit = 10, transactionType = 'All') {
+  async getWalletTransactions(chain, address, limit = 10, transactionType = 'All', options = {}) {
     const service = this.getService(chain);
+    if (chain === 'Oasis Sapphire' && typeof service.setNetwork === 'function') {
+      service.setNetwork(options.network);
+    }
     return await service.getWalletTransactions(address, limit, transactionType);
   }
 
-  async getWalletNFTsAndTokens(chain, address, includeNFTs = true, includeTokens = true) {
+  async getWalletNFTsAndTokens(chain, address, includeNFTs = true, includeTokens = true, options = {}) {
     const service = this.getService(chain);
+    if (chain === 'Oasis Sapphire' && typeof service.setNetwork === 'function') {
+      service.setNetwork(options.network);
+    }
     return await service.getWalletNFTsAndTokens(address, includeNFTs, includeTokens);
   }
 
   // Unified Token Operations
-  async getTokenInfo(chain, tokenAddress, includePrice = true, includeMetrics = true) {
+  async getTokenInfo(chain, tokenAddress, includePrice = true, includeMetrics = true, options = {}) {
     const service = this.getService(chain);
+    if (chain === 'Oasis Sapphire' && typeof service.setNetwork === 'function') {
+      service.setNetwork(options.network);
+    }
     return await service.getTokenInfo(tokenAddress, includePrice, includeMetrics);
   }
 

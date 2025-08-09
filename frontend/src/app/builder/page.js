@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useCallback, useEffect, Suspense } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { DndContext, DragOverlay, useSensor, useSensors, PointerSensor } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { 
@@ -18,7 +18,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { usePrivy } from '@privy-io/react-auth';
-import { upsertWorkflow } from '../services/localWorkflowService';
+import { upsertWorkflow, getWorkflow as lsGetWorkflow } from '../services/localWorkflowService';
 import BlockPalette from '../components/BlockPalette';
 import WorkflowCanvas from '../components/WorkflowCanvas';
 import BlockConfigPanel from '../components/BlockConfigPanel';
@@ -109,7 +109,8 @@ export const blockTypes = {
 };
 
 function BuilderContent() {
-  const { authenticated, user, login } = usePrivy();
+  const { authenticated, user, login, ready } = usePrivy();
+  const router = useRouter();
   const searchParams = useSearchParams();
   const editId = searchParams.get('edit');
   const templateId = searchParams.get('template');
@@ -131,21 +132,23 @@ function BuilderContent() {
     })
   );
 
-  // Load workflow or template on mount
-  useEffect(() => {
-    if (editId) {
-      loadWorkflow(editId);
-    } else if (templateId) {
-      loadTemplate(templateId);
-    }
-  }, [editId, templateId]);
-
-  const loadWorkflow = async (workflowId) => {
+  // Loader: prefer localStorage, fallback to API
+  const loadWorkflow = useCallback(async (workflowId) => {
     setLoading(true);
     try {
+      const userId = user?.wallet?.address || user?.id || 'anonymous';
+      const local = lsGetWorkflow(userId, workflowId);
+      if (local) {
+        setWorkflowName(local.name);
+        setWorkflowDescription(local.description || '');
+        setWorkflowBlocks(local.blocks || []);
+        setCurrentWorkflowId(local.id);
+        return;
+      }
+
       const response = await fetch(`/api/workflows/${workflowId}`);
       const data = await response.json();
-      
+
       if (data.success && data.workflow) {
         const workflow = data.workflow;
         setWorkflowName(workflow.name);
@@ -161,7 +164,20 @@ function BuilderContent() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [user]);
+
+  // Load workflow or template on mount
+  useEffect(() => {
+    if (ready && !authenticated) {
+      router.replace('/');
+      return;
+    }
+    if (editId) {
+      loadWorkflow(editId);
+    } else if (templateId) {
+      loadTemplate(templateId);
+    }
+  }, [editId, templateId, ready, authenticated, router, loadWorkflow]);
 
   const loadTemplate = async (templateId) => {
     setLoading(true);
@@ -316,7 +332,7 @@ function BuilderContent() {
         onDragEnd={handleDragEnd}
       >
         {/* Block Palette - sticky left sidebar */}
-        <div className="w-80 bg-card border-r border-border fixed left-0 top-16 h-[calc(100vh-4rem)] z-10 flex flex-col">
+        <div className="w-80 bg-card border-r border-border fixed left-0 top-16 h-[calc(100vh-4rem)] z-20 flex flex-col">
           <div className="p-4 border-b border-border">
             <div className="flex items-center justify-between mb-2">
               <h2 className="text-lg font-semibold text-foreground">Blocks</h2>
@@ -337,7 +353,7 @@ function BuilderContent() {
         {/* Main Canvas Area - with proper margins for sticky sidebars */}
         <div className={`flex-1 flex flex-col min-h-0 ml-80${selectedBlock ? ' mr-80' : ''}`}>
           {/* Toolbar - sticky to top */}
-          <div className="h-16 bg-card border-b border-border flex items-center justify-between px-6 sticky top-16 z-0 flex-shrink-0">
+          <div className="h-16 bg-card border-b border-border flex items-center justify-between px-6 sticky top-16 z-10 flex-shrink-0">
             <div className="flex items-center space-x-4 pl-80">
               <input
                 type="text"

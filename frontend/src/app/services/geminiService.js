@@ -1,27 +1,27 @@
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import { GoogleGenAI } from "@google/genai";
 
 class GeminiService {
   constructor() {
-    this.apiKey = process.env.GEMINI_API_KEY;
-    this.genAI = null;
-    this.model = null;
+    // In the browser, only NEXT_PUBLIC_* env vars are available.
+    // Fallback to GEMINI_API_KEY for server contexts.
+    this.apiKey = process.env.NEXT_PUBLIC_GEMINI_API_KEY || process.env.GEMINI_API_KEY;
+    this.ai = null;
+    this.modelName = "gemini-2.5-flash"; // Follow latest docs for default model name
     this.initialized = false;
   }
 
   async initialize() {
     if (this.initialized) return;
 
-    if (!this.apiKey) {
-      throw new Error('Gemini API key not configured. Please set GEMINI_API_KEY in your environment variables.');
-    }
+    // If apiKey is not set explicitly, the SDK will try to read GEMINI_API_KEY
+    // from process.env (server/node). For browsers, we pass NEXT_PUBLIC_GEMINI_API_KEY.
 
     try {
-      this.genAI = new GoogleGenerativeAI(this.apiKey);
-      this.model = this.genAI.getGenerativeModel({ model: 'gemini-pro' });
+      this.ai = new GoogleGenAI(this.apiKey ? { apiKey: this.apiKey } : {});
       this.initialized = true;
-      console.log('Gemini service initialized successfully');
+      console.log("Gemini service initialized successfully");
     } catch (error) {
-      console.error('Failed to initialize Gemini service:', error);
+      console.error("Failed to initialize Gemini service:", error);
       throw error;
     }
   }
@@ -33,10 +33,24 @@ class GeminiService {
       // Build the complete prompt with context
       const fullPrompt = this.buildPrompt(prompt, contextData, options);
 
-      // Generate content using Gemini
-      const result = await this.model.generateContent(fullPrompt);
-      const response = await result.response;
-      const text = response.text();
+      // Generate content using Gemini (new SDK)
+      const result = await this.ai.models.generateContent({
+        model: this.modelName,
+        contents: fullPrompt,
+        config: {
+          temperature: 0.7,
+          topP: 0.95,
+          topK: 40,
+          maxOutputTokens: 1000,
+          responseMimeType: "text/plain",
+          thinkingConfig: {
+            thinkingBudget: "0",
+          },
+        },
+        // You can pass config here, e.g. thinkingBudget via options
+        // config: options?.thinkingBudget != null ? { thinkingConfig: { thinkingBudget: options.thinkingBudget } } : undefined,
+      });
+      const text = result.text;
 
       // Parse and structure the response
       const structuredResponse = this.parseResponse(text, prompt, contextData);
@@ -44,22 +58,22 @@ class GeminiService {
       return {
         success: true,
         ...structuredResponse,
-        model: 'gemini-pro',
+        model: "gemini-pro",
         timestamp: new Date().toISOString(),
         tokensUsed: this.estimateTokens(fullPrompt + text),
       };
-
     } catch (error) {
-      console.error('Gemini AI explanation failed:', error);
-      
+      console.error("Gemini AI explanation failed:", error);
+
       return {
         success: false,
         error: error.message,
-        explanation: 'Failed to generate AI explanation. Please check your Gemini API configuration.',
+        explanation:
+          "Failed to generate AI explanation. Please check your Gemini API configuration.",
         insights: [],
         recommendations: [],
         confidence: 0,
-        model: 'gemini-pro',
+        model: "gemini-pro",
         timestamp: new Date().toISOString(),
       };
     }
@@ -117,28 +131,41 @@ Keep your response practical, actionable, and focused on the Web3/DeFi context.`
   parseResponse(text, originalPrompt, contextData) {
     try {
       // Extract sections using regex patterns
-      const explanationMatch = text.match(/EXPLANATION:\s*([\s\S]*?)(?=INSIGHTS:|$)/i);
-      const insightsMatch = text.match(/INSIGHTS:\s*([\s\S]*?)(?=RECOMMENDATIONS:|$)/i);
-      const recommendationsMatch = text.match(/RECOMMENDATIONS:\s*([\s\S]*?)(?=CONFIDENCE:|$)/i);
+      const explanationMatch = text.match(
+        /EXPLANATION:\s*([\s\S]*?)(?=INSIGHTS:|$)/i
+      );
+      const insightsMatch = text.match(
+        /INSIGHTS:\s*([\s\S]*?)(?=RECOMMENDATIONS:|$)/i
+      );
+      const recommendationsMatch = text.match(
+        /RECOMMENDATIONS:\s*([\s\S]*?)(?=CONFIDENCE:|$)/i
+      );
       const confidenceMatch = text.match(/CONFIDENCE:\s*([\d.]+)/i);
 
       // Parse insights and recommendations into arrays
-      const insights = this.parseListItems(insightsMatch?.[1] || '');
-      const recommendations = this.parseListItems(recommendationsMatch?.[1] || '');
+      const insights = this.parseListItems(insightsMatch?.[1] || "");
+      const recommendations = this.parseListItems(
+        recommendationsMatch?.[1] || ""
+      );
 
       return {
         explanation: (explanationMatch?.[1] || text).trim(),
-        insights: insights.length > 0 ? insights : this.generateFallbackInsights(contextData),
-        recommendations: recommendations.length > 0 ? recommendations : this.generateFallbackRecommendations(),
-        confidence: parseFloat(confidenceMatch?.[1] || '0.8'),
+        insights:
+          insights.length > 0
+            ? insights
+            : this.generateFallbackInsights(contextData),
+        recommendations:
+          recommendations.length > 0
+            ? recommendations
+            : this.generateFallbackRecommendations(),
+        confidence: parseFloat(confidenceMatch?.[1] || "0.8"),
         rawResponse: text,
       };
-
     } catch (error) {
-      console.error('Failed to parse Gemini response:', error);
-      
+      console.error("Failed to parse Gemini response:", error);
+
       return {
-        explanation: text || 'Analysis completed successfully.',
+        explanation: text || "Analysis completed successfully.",
         insights: this.generateFallbackInsights(contextData),
         recommendations: this.generateFallbackRecommendations(),
         confidence: 0.7,
@@ -149,33 +176,40 @@ Keep your response practical, actionable, and focused on the Web3/DeFi context.`
 
   parseListItems(text) {
     if (!text) return [];
-    
+
     return text
-      .split('\n')
-      .map(line => line.trim())
-      .filter(line => line.startsWith('-') || line.startsWith('•') || line.match(/^\d+\./))
-      .map(line => line.replace(/^[-•]\s*/, '').replace(/^\d+\.\s*/, ''))
-      .filter(line => line.length > 0)
+      .split("\n")
+      .map((line) => line.trim())
+      .filter(
+        (line) =>
+          line.startsWith("-") || line.startsWith("•") || line.match(/^\d+\./)
+      )
+      .map((line) => line.replace(/^[-•]\s*/, "").replace(/^\d+\.\s*/, ""))
+      .filter((line) => line.length > 0)
       .slice(0, 5); // Limit to 5 items
   }
 
   generateFallbackInsights(contextData) {
     const insights = [];
-    
+
     if (contextData.balance) {
-      insights.push('Portfolio balance analysis shows current token distribution');
+      insights.push(
+        "Portfolio balance analysis shows current token distribution"
+      );
     }
-    
+
     if (contextData.transactions) {
-      insights.push('Recent transaction patterns indicate active trading behavior');
+      insights.push(
+        "Recent transaction patterns indicate active trading behavior"
+      );
     }
-    
+
     if (contextData.tokenInfo) {
-      insights.push('Token metrics suggest market volatility considerations');
+      insights.push("Token metrics suggest market volatility considerations");
     }
 
     if (insights.length === 0) {
-      insights.push('Data analysis completed with available information');
+      insights.push("Data analysis completed with available information");
     }
 
     return insights;
@@ -183,10 +217,10 @@ Keep your response practical, actionable, and focused on the Web3/DeFi context.`
 
   generateFallbackRecommendations() {
     return [
-      'Monitor portfolio performance regularly',
-      'Consider diversification across multiple chains',
-      'Optimize gas usage for cost efficiency',
-      'Stay updated with market trends and opportunities'
+      "Monitor portfolio performance regularly",
+      "Consider diversification across multiple chains",
+      "Optimize gas usage for cost efficiency",
+      "Stay updated with market trends and opportunities",
     ];
   }
 
@@ -225,20 +259,22 @@ Keep your response practical, actionable, and focused on the Web3/DeFi context.`
   async healthCheck() {
     try {
       await this.initialize();
-      
-      const testResult = await this.model.generateContent('Hello, this is a test. Please respond with "Gemini service is working correctly."');
+
+      const testResult = await this.model.generateContent(
+        'Hello, this is a test. Please respond with "Gemini service is working correctly."'
+      );
       const response = await testResult.response;
       const text = response.text();
-      
+
       return {
-        status: 'healthy',
-        model: 'gemini-pro',
+        status: "healthy",
+        model: "gemini-pro",
         response: text,
         timestamp: new Date().toISOString(),
       };
     } catch (error) {
       return {
-        status: 'unhealthy',
+        status: "unhealthy",
         error: error.message,
         timestamp: new Date().toISOString(),
       };

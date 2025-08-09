@@ -1,13 +1,14 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { Waves, Plus, Settings } from 'lucide-react';
 import Image from 'next/image';
 import { usePrivy, useWallets } from '@privy-io/react-auth';
 
 export default function Navigation() {
   const pathname = usePathname();
+  const router = useRouter();
   const { ready, authenticated, user, login, logout } = usePrivy();
   const { wallets } = useWallets();
 
@@ -61,7 +62,13 @@ export default function Navigation() {
                     })()}
                   </span>
                   <button
-                    onClick={logout}
+                    onClick={async () => {
+                      try {
+                        await logout();
+                      } finally {
+                        router.push('/');
+                      }
+                    }}
                     className="px-3 py-1 text-sm bg-border hover:bg-hover rounded-md text-foreground/80"
                   >
                     Logout

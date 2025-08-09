@@ -1,17 +1,23 @@
 import { ethers } from 'ethers';
 import axios from 'axios';
 
-// Oasis Sapphire RPC endpoints
+// Oasis Sapphire RPC endpoints & explorer hosts
+// explorerWeb is the human-facing explorer. explorerApi is the JSON API (legacy host)
+// nexusBase is the recommended Nexus API base for tx queries per network
 const OASIS_NETWORKS = {
   mainnet: {
     rpc: 'https://sapphire.oasis.io',
     chainId: 23294,
-    explorer: 'https://explorer.sapphire.oasis.io',
+    explorerWeb: 'https://explorer.oasis.io/mainnet/sapphire',
+    explorerApi: 'https://explorer.sapphire.oasis.io',
+    nexusBase: 'https://nexus.oasis.io/v1/sapphire',
   },
   testnet: {
     rpc: 'https://testnet.sapphire.oasis.dev',
     chainId: 23295,
-    explorer: 'https://testnet.explorer.sapphire.oasis.dev',
+    explorerWeb: 'https://explorer.oasis.io/testnet/sapphire',
+    explorerApi: 'https://testnet.explorer.sapphire.oasis.dev',
+    nexusBase: 'https://testnet.nexus.oasis.io/v1/sapphire',
   },
 };
 
@@ -37,11 +43,23 @@ const STAKING_ABI = [
 ];
 
 class OasisService {
-  constructor(network = 'testnet') {
+  constructor(network = process.env.NEXT_PUBLIC_OASIS_NETWORK || 'testnet') {
     this.network = network;
     this.networkConfig = OASIS_NETWORKS[network];
     this.provider = new ethers.JsonRpcProvider(this.networkConfig.rpc);
     this.signer = null;
+  }
+
+  setNetwork(network) {
+    const desired = network || process.env.NEXT_PUBLIC_OASIS_NETWORK || 'testnet';
+    if (desired === this.network) return this;
+    if (!OASIS_NETWORKS[desired]) {
+      throw new Error(`Unsupported Oasis network: ${desired}`);
+    }
+    this.network = desired;
+    this.networkConfig = OASIS_NETWORKS[desired];
+    this.provider = new ethers.JsonRpcProvider(this.networkConfig.rpc);
+    return this;
   }
 
   // Privy Integration (to be used with Privy React hooks)
@@ -154,7 +172,7 @@ class OasisService {
   async getWalletTransactions(address, limit = 10, transactionType = 'All') {
     try {
       // Use Oasis Explorer API to get transaction history
-      const explorerUrl = `${this.networkConfig.explorer}/api/v1/accounts/${address}/transactions`;
+      const explorerUrl = `${this.networkConfig.explorer}//${address}/transactions`;
       const response = await axios.get(explorerUrl, {
         params: { limit, offset: 0 }
       });
@@ -201,11 +219,18 @@ class OasisService {
   // Enhanced Token Operations with The Graph
   async getTokenInfo(tokenAddress, includePrice = true, includeMetrics = true) {
     try {
+      // 1) Basic validation: ensure the address is a contract on this network
+      const code = await this.provider.getCode(tokenAddress);
+      if (!code || code === '0x') {
+        throw new Error(`Address ${tokenAddress} is not a contract on Oasis Sapphire ${this.network}`);
+      }
+
       const tokenContract = new ethers.Contract(tokenAddress, ERC20_ABI, this.provider);
-      
+
+      // 2) Read metadata with robust fallbacks (bytes32)
       const [name, symbol, decimals, totalSupply] = await Promise.all([
-        tokenContract.name(),
-        tokenContract.symbol(),
+        this.readTokenName(tokenAddress),
+        this.readTokenSymbol(tokenAddress),
         tokenContract.decimals(),
         tokenContract.totalSupply(),
       ]);
@@ -232,6 +257,56 @@ class OasisService {
     } catch (error) {
       console.error('Failed to get token info:', error);
       throw error;
+    }
+  }
+
+  // --- Robust metadata readers with bytes32 fallback ---
+  async readTokenName(tokenAddress) {
+    const stringAbi = ['function name() view returns (string)'];
+    const bytesAbi = ['function name() view returns (bytes32)'];
+    try {
+      const c = new ethers.Contract(tokenAddress, stringAbi, this.provider);
+      return await c.name();
+    } catch (_) {
+      try {
+        const cBytes = new ethers.Contract(tokenAddress, bytesAbi, this.provider);
+        const raw = await cBytes.name();
+        return this.decodeBytes32ToString(raw);
+      } catch (e2) {
+        throw new Error(`Unable to read token name: ${e2.message}`);
+      }
+    }
+  }
+
+  async readTokenSymbol(tokenAddress) {
+    const stringAbi = ['function symbol() view returns (string)'];
+    const bytesAbi = ['function symbol() view returns (bytes32)'];
+    try {
+      const c = new ethers.Contract(tokenAddress, stringAbi, this.provider);
+      return await c.symbol();
+    } catch (_) {
+      try {
+        const cBytes = new ethers.Contract(tokenAddress, bytesAbi, this.provider);
+        const raw = await cBytes.symbol();
+        return this.decodeBytes32ToString(raw);
+      } catch (e2) {
+        throw new Error(`Unable to read token symbol: ${e2.message}`);
+      }
+    }
+  }
+
+  decodeBytes32ToString(bytes32Value) {
+    try {
+      return ethers.decodeBytes32String(bytes32Value);
+    } catch (_) {
+      // Fallback manual decode: strip trailing zeros and decode as UTF-8
+      const hex = typeof bytes32Value === 'string' ? bytes32Value : ethers.hexlify(bytes32Value);
+      const stripped = hex.replace(/(00)+$/i, '');
+      try {
+        return ethers.toUtf8String(stripped);
+      } catch {
+        return 'UNKNOWN';
+      }
     }
   }
 
@@ -347,33 +422,64 @@ class OasisService {
   // Enhanced wallet operations with The Graph data
   async getWalletTransactions(address, limit = 10, transactionType = 'All') {
     try {
-      // First try to get from The Graph for richer data
+      // 1) The Graph (preferred when configured)
       const graphTransactions = await this.getTransactionsFromGraph(address, limit);
-      
-      if (graphTransactions.length > 0) {
-        return graphTransactions;
-      }
+      if (graphTransactions.length > 0) return graphTransactions;
 
-      // Fallback to explorer API
-      const explorerUrl = `${this.networkConfig.explorer}/api/v1/accounts/${address}/transactions`;
-      const response = await axios.get(explorerUrl, {
-        params: { limit, offset: 0 }
-      });
+      // 2) Nexus API (optional)
+      // Uncomment to enable Nexus before explorer/RPC
+      // try {
+      //   const url = `${this.networkConfig.nexusBase}/transactions`;
+      //   const response = await axios.get(url, {
+      //     params: { limit, offset: 0, rel: address },
+      //     timeout: 8000,
+      //   });
+      //   const list = Array.isArray(response.data?.transactions) ? response.data.transactions : [];
+      //   const mapped = list.map(tx => ({
+      //     hash: tx.eth_hash || tx.hash,
+      //     timestamp: tx.timestamp,
+      //     from: tx.sender_0_eth || tx.sender_0 || null,
+      //     to: tx.to_eth || tx.to || null,
+      //     value: tx.amount || null,
+      //     gasUsed: tx.gas_used ?? null,
+      //     gasPrice: null,
+      //     status: tx.success ? 'success' : 'failed',
+      //     type: tx.is_likely_native_token_transfer ? 'Transfer' : (tx.method?.includes('Deposit') ? 'Deposit' : 'Contract'),
+      //   }));
+      //   if (mapped.length > 0) return mapped;
+      // } catch (nexusErr) {}
 
-      return response.data.transactions?.map(tx => ({
-        hash: tx.hash,
-        timestamp: tx.timestamp,
-        from: tx.from,
-        to: tx.to,
-        value: tx.value,
-        gasUsed: tx.gasUsed,
-        gasPrice: tx.gasPrice,
-        status: tx.status,
-        type: this.getTransactionType(tx),
-      })) || [];
+      // 3) Explorer API (guard CORS / network errors gracefully)
+      // try {
+      //   const explorerUrl = `${this.networkConfig.explorerApi}/api/v1/sapphire/${address}/transactions`;
+      //   const response = await axios.get(explorerUrl, {
+      //     params: { limit, offset: 0 },
+      //     timeout: 8000,
+      //   });
+      //   return response.data.transactions?.map(tx => ({
+      //     hash: tx.hash,
+      //     timestamp: tx.timestamp,
+      //     from: tx.from,
+      //     to: tx.to,
+      //     value: tx.value,
+      //     gasUsed: tx.gasUsed,
+      //     gasPrice: tx.gasPrice,
+      //     status: tx.status,
+      //     type: this.getTransactionType(tx),
+      //   })) || [];
+      // } catch (expErr) {
+      //   console.warn('Explorer API unavailable, falling back to RPC scan');
+      //   return await this.scanRecentTransactions(address, limit);
+      // }
     } catch (error) {
-      console.error('Failed to get wallet transactions:', error);
-      return [];
+      console.error('Failed to get wallet transactions (graph/explorer):', error);
+      // Final fallback: scan recent blocks directly from RPC provider
+      try {
+        // return await this.scanRecentTransactions(address, limit);
+      } catch (e2) {
+        console.error('RPC scan for transactions failed:', e2);
+        return [];
+      }
     }
   }
 
@@ -480,6 +586,41 @@ class OasisService {
     if (tx.mints && tx.mints.length > 0) return 'Add Liquidity';
     if (tx.burns && tx.burns.length > 0) return 'Remove Liquidity';
     return 'Transfer';
+  }
+
+  async scanRecentTransactions(address, limit = 10, maxBlocks = 1500) {
+    const results = [];
+    const normalized = address.toLowerCase();
+    try {
+      const latest = await this.provider.getBlockNumber();
+      for (let i = latest; i > latest - maxBlocks && i >= 0 && results.length < limit; i--) {
+        // get block with transactions (ethers v6)
+        const block = await this.provider.getBlockWithTransactions(i);
+        if (!block || !Array.isArray(block.transactions)) continue;
+        for (const tx of block.transactions) {
+          const from = tx.from?.toLowerCase?.() || '';
+          const to = tx.to?.toLowerCase?.() || '';
+          if (from === normalized || to === normalized) {
+            results.push({
+              hash: tx.hash,
+              timestamp: new Date((block.timestamp || 0) * 1000).toISOString(),
+              from: tx.from,
+              to: tx.to,
+              value: tx.value?.toString?.() ?? null,
+              gasUsed: null,
+              gasPrice: tx.gasPrice?.toString?.() ?? null,
+              status: 'unknown',
+              type: 'Transfer',
+            });
+            if (results.length >= limit) break;
+          }
+        }
+      }
+      return results;
+    } catch (error) {
+      console.error('scanRecentTransactions error:', error);
+      return results;
+    }
   }
 
   // Staking Operations

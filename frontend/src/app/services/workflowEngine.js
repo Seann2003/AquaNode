@@ -33,18 +33,38 @@ class WorkflowEngine {
           console.log(`Executing block ${i + 1}/${workflow.blocks.length}: ${block.name}`);
           
           const blockResult = await this.executeBlock(block, this.executionContext);
-          
-          results.push({
-            blockId: block.id,
-            blockName: block.name,
-            blockType: block.type,
-            status: 'success',
-            result: blockResult,
-            executionTime: Date.now() - this.executionContext.startTime,
-          });
 
-          // Store result in context for next blocks
-          this.executionContext.results[block.id] = blockResult;
+          const isReportedFailure =
+            blockResult && (blockResult.success === false || blockResult.status === 'failed' || !!blockResult.error);
+
+          if (isReportedFailure) {
+            results.push({
+              blockId: block.id,
+              blockName: block.name,
+              blockType: block.type,
+              status: 'error',
+              error: blockResult.error || 'Block reported failure',
+              result: blockResult,
+              executionTime: Date.now() - this.executionContext.startTime,
+            });
+
+            this.executionContext.errors.push({
+              blockId: block.id,
+              error: blockResult.error || 'Block reported failure',
+            });
+          } else {
+            results.push({
+              blockId: block.id,
+              blockName: block.name,
+              blockType: block.type,
+              status: 'success',
+              result: blockResult,
+              executionTime: Date.now() - this.executionContext.startTime,
+            });
+
+            // Store result in context for next blocks
+            this.executionContext.results[block.id] = blockResult;
+          }
 
           // Check if this is a conditional block and handle branching
           if (block.type === 'conditional') {
@@ -165,7 +185,7 @@ class WorkflowEngine {
   }
 
   async executeWalletBalanceBlock(block, context) {
-    const { chain, walletAddress, tokenType, tokenAddress } = block.config;
+    const { chain, walletAddress, tokenType, tokenAddress, network } = block.config;
     
     if (!walletAddress) {
       throw new Error('Wallet address is required');
@@ -175,7 +195,8 @@ class WorkflowEngine {
       chain,
       walletAddress,
       tokenType,
-      tokenAddress
+      tokenAddress,
+      { network }
     );
 
     return {
@@ -184,11 +205,12 @@ class WorkflowEngine {
       address: walletAddress,
       balance,
       tokenType,
+      network,
     };
   }
 
   async executeWalletTransactionBlock(block, context) {
-    const { chain, walletAddress, limit, transactionType } = block.config;
+    const { chain, walletAddress, limit, transactionType, network } = block.config;
     
     if (!walletAddress) {
       throw new Error('Wallet address is required');
@@ -198,7 +220,8 @@ class WorkflowEngine {
       chain,
       walletAddress,
       limit || 10,
-      transactionType || 'All'
+      transactionType || 'All',
+      { network }
     );
 
     return {
@@ -207,11 +230,12 @@ class WorkflowEngine {
       address: walletAddress,
       transactions,
       count: transactions.length,
+      network,
     };
   }
 
   async executeWalletNFTBlock(block, context) {
-    const { chain, walletAddress, includeNFTs, includeTokens } = block.config;
+    const { chain, walletAddress, includeNFTs, includeTokens, network } = block.config;
     
     if (!walletAddress) {
       throw new Error('Wallet address is required');
@@ -221,7 +245,8 @@ class WorkflowEngine {
       chain,
       walletAddress,
       includeNFTs,
-      includeTokens
+      includeTokens,
+      { network }
     );
 
     return {
@@ -229,11 +254,12 @@ class WorkflowEngine {
       chain,
       address: walletAddress,
       data,
+      network,
     };
   }
 
   async executeTokenInfoBlock(block, context) {
-    const { chain, tokenAddress, includePrice, includeMetrics } = block.config;
+    const { chain, tokenAddress, includePrice, includeMetrics, network } = block.config;
     
     if (!tokenAddress) {
       throw new Error('Token address is required');
@@ -243,7 +269,8 @@ class WorkflowEngine {
       chain,
       tokenAddress,
       includePrice,
-      includeMetrics
+      includeMetrics,
+      { network }
     );
 
     return {
@@ -251,6 +278,7 @@ class WorkflowEngine {
       chain,
       tokenAddress,
       tokenInfo,
+      network,
     };
   }
 
@@ -325,21 +353,46 @@ class WorkflowEngine {
   }
 
   async executeAIExplanationBlock(block, context) {
-    const { prompt, includeContext } = block.config;
+    const { prompt } = block.config;
     
     if (!prompt) {
       throw new Error('AI prompt is required');
     }
 
-    let contextData = {};
-    if (includeContext) {
-      contextData = context.results;
-    }
+    // Always provide prior block outputs as context, plus concise summaries
+    const results = context.results || {};
+    const balanceSummary = [];
+    const txSummary = [];
+    Object.values(results).forEach((res) => {
+      const r = res?.type ? res : res?.result; // handle nested shape defensively
+      if (!r) return;
+      if (r.type === 'wallet_balance') {
+        const native = r.balance?.native || {};
+        const formatted = parseFloat(native.formatted ?? native.balance ?? '0');
+        const symbol = native.symbol || (r.chain?.includes('Oasis') ? 'ROSE' : r.chain?.includes('Sui') ? 'SUI' : 'Native');
+        balanceSummary.push({ chain: r.chain, address: r.address, amount: formatted, symbol });
+      }
+      if (r.type === 'wallet_transactions') {
+        txSummary.push({ chain: r.chain, address: r.address, count: Array.isArray(r.transactions) ? r.transactions.length : 0 });
+      }
+    });
 
-    const aiResponse = await this.blockchainService.generateAIExplanation(
-      prompt,
-      contextData
-    );
+    const totalBySymbol = balanceSummary.reduce((acc, b) => {
+      acc[b.symbol] = (acc[b.symbol] || 0) + (isFinite(b.amount) ? b.amount : 0);
+      return acc;
+    }, {});
+
+    const contextData = {
+      results,
+      summaries: {
+        balances: balanceSummary,
+        transactions: txSummary,
+        totalBySymbol,
+      },
+      guidance: 'Use summaries for quick reasoning. Provide totals and any notable patterns. If values are in different symbols, keep per-symbol totals.',
+    };
+
+    const aiResponse = await this.blockchainService.generateAIExplanation(prompt, contextData);
 
     return {
       type: 'ai_explanation',

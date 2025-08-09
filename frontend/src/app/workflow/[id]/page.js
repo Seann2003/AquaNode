@@ -17,7 +17,9 @@ import {
 } from 'lucide-react';
 import { blockTypes } from '../../builder/page';
 import { usePrivy } from '@privy-io/react-auth';
+import { useRouter } from 'next/navigation';
 import { getWorkflow as lsGetWorkflow, upsertWorkflow as lsUpsertWorkflow } from '../../services/localWorkflowService';
+import WorkflowEngine from '../../services/workflowEngine';
 import { ChainBadge } from '../../components/ChainLogo';
 
 // Mock workflow data
@@ -85,7 +87,8 @@ const mockWorkflowData = {
 };
 
 export default function WorkflowPage({ params }) {
-  const { authenticated, user } = usePrivy();
+  const { authenticated, user, ready } = usePrivy();
+  const router = useRouter();
   const { id } = useAwait(params);
   const [workflow, setWorkflow] = useState(null);
   const [isRunning, setIsRunning] = useState(false);
@@ -93,6 +96,19 @@ export default function WorkflowPage({ params }) {
   const [editableName, setEditableName] = useState('');
   const [editableDescription, setEditableDescription] = useState('');
   const [autoRun, setAutoRun] = useState(false);
+
+  const normalizeAI = (aiObj) => {
+    if (!aiObj) return null;
+    const a = aiObj;
+    const isNested = a?.response && (a.response.explanation || a.response.rawResponse || (a.response.insights?.length) || (a.response.recommendations?.length));
+    return isNested ? a.response : a;
+  };
+
+  const shorten = (text, maxLen = 120) => {
+    if (!text) return '';
+    const s = String(text);
+    return s.length > maxLen ? `${s.slice(0, maxLen)}...` : s;
+  };
 
   const fetchWorkflow = useCallback(async () => {
     try {
@@ -108,8 +124,12 @@ export default function WorkflowPage({ params }) {
   }, [id, user]);
 
   useEffect(() => {
+    if (ready && !authenticated) {
+      router.replace('/');
+      return;
+    }
     fetchWorkflow();
-  }, [fetchWorkflow]);
+  }, [fetchWorkflow, ready, authenticated, router]);
 
   useEffect(() => {
     if (workflow) {
@@ -140,6 +160,7 @@ export default function WorkflowPage({ params }) {
           ...prev,
           status: newStatus
         }));
+        console.log('Workflow status updated:', response);
       } else {
         alert('Failed to update workflow status');
       }
@@ -154,46 +175,102 @@ export default function WorkflowPage({ params }) {
   const handleRunOnce = async () => {
     if (!workflow) return;
     setIsRunning(true);
-    const startMs = Date.now();
+    const runStartMs = Date.now();
     try {
-      // Simulate execution, then record a history entry and persist to localStorage
-      setTimeout(() => {
-        const durationSeconds = ((Date.now() - startMs) / 1000).toFixed(1) + 's';
-        const newHistoryEntry = {
-          timestamp: new Date().toLocaleString(),
-          status: 'success',
-          duration: durationSeconds,
-          result: 'Workflow ran successfully',
+      const engine = new WorkflowEngine();
+      // For now, we do not require connected signers for read-only blocks
+      const userWallets = {};
+      const execution = await engine.executeWorkflow(workflow, userWallets);
+
+      const durationSeconds = ((Date.now() - runStartMs) / 1000).toFixed(1) + 's';
+
+      const summarizeBalance = (balanceObj, chain) => {
+        if (!balanceObj || typeof balanceObj !== 'object') return 'No balance data';
+        // Prefer native balance if present
+        if (balanceObj.native) {
+          const symbol = balanceObj.native.symbol || (chain?.includes('Oasis') ? 'ROSE' : chain?.includes('Sui') ? 'SUI' : 'Native');
+          return `${balanceObj.native.formatted ?? balanceObj.native.balance} ${symbol}`;
+        }
+        // Otherwise, take up to two tokens
+        const entries = Object.entries(balanceObj).slice(0, 2).map(([key, val]) => {
+          const amount = val.formatted ?? val.balance ?? '0';
+          const symbol = val.symbol || key.split('::').pop();
+          return `${amount} ${symbol}`;
+        });
+        return entries.length ? entries.join(', ') : 'No balance data';
+      };
+
+      let latestAI = null;
+      let aiPreview = null;
+      const summaryLines = execution.results.map(r => {
+        if (r.blockType === 'walletBalance' || r.result?.type === 'wallet_balance') {
+          const base = r.result?.type ? r.result : r.result?.result;
+          const short = summarizeBalance(base?.balance, base?.chain || r.blockName);
+          const shortAddr = (base?.address || '').slice(0, 6);
+          return `Balance (${base?.chain || 'chain'} ${shortAddr ? shortAddr + '...' : ''}): ${short}`;
+        }
+        if (r.blockType === 'walletTransaction' || r.result?.type === 'wallet_transactions') {
+          const base = r.result?.type ? r.result : r.result?.result;
+          const txs = Array.isArray(base?.transactions) ? base.transactions : [];
+          const count = txs.length;
+          const latest = txs[0] || null;
+          const latestType = latest?.type || 'N/A';
+          const shortAddr = (base?.address || '').slice(0, 6);
+          return `Transactions (${base?.chain || 'chain'} ${shortAddr ? shortAddr + '...' : ''}): ${count} found, latest ${latestType}`;
+        }
+        if (r.blockType === 'tokenInfo' || r.result?.type === 'token_info') {
+          return `${r.blockName}: token info fetched`;
+        }
+        if (r.blockType === 'aiExplanation' || r.result?.type === 'ai_explanation') {
+          const base = r.result?.type ? r.result : r.result?.result;
+          const ai = base?.response || base;
+          latestAI = ai || null;
+          const expl = (ai?.explanation || '').replace(/\s+/g, ' ').trim();
+          const preview = expl ? (expl.length > 140 ? `${expl.slice(0, 140)}...` : expl) : 'AI analysis ready';
+          aiPreview = preview;
+          return `${r.blockName}: ${preview}`;
+        }
+        if (r.status === 'success') return `${r.blockName}: success`;
+        return `${r.blockName}: error`;
+      });
+
+      const hasBlockError = execution.results.some(r => r.status === 'error');
+      const newHistoryEntry = {
+        timestamp: new Date().toLocaleString(),
+        status: hasBlockError ? 'error' : ((execution.status === 'success' || execution.status === 'partial_success') ? 'success' : 'error'),
+        duration: durationSeconds,
+        result: summaryLines.join(' | '),
+        aiPreview: aiPreview || null,
+      };
+
+      setWorkflow(prev => {
+        const previousHistory = Array.isArray(prev.executionHistory) ? prev.executionHistory : [];
+        const updatedHistory = [newHistoryEntry, ...previousHistory];
+        const updatedTotalRuns = (prev.totalRuns || 0) + 1;
+        const successfulRuns = updatedHistory.filter(h => h.status === 'success').length;
+        const updatedSuccessRate = Number(((successfulRuns / updatedHistory.length) * 100).toFixed(1));
+
+        const updated = {
+          ...prev,
+          lastRun: 'just now',
+          totalRuns: updatedTotalRuns,
+          successRate: isFinite(updatedSuccessRate) ? updatedSuccessRate : (prev.successRate || 0),
+          executionHistory: updatedHistory,
+          lastAIAnalysis: latestAI || prev.lastAIAnalysis || null,
         };
 
-        setWorkflow(prev => {
-          const previousHistory = Array.isArray(prev.executionHistory) ? prev.executionHistory : [];
-          const updatedHistory = [newHistoryEntry, ...previousHistory];
-          const updatedTotalRuns = (prev.totalRuns || 0) + 1;
-          const successfulRuns = updatedHistory.filter(h => h.status === 'success').length;
-          const updatedSuccessRate = Number(((successfulRuns / updatedHistory.length) * 100).toFixed(1));
-
-          const updated = {
-            ...prev,
-            lastRun: 'just now',
-            totalRuns: updatedTotalRuns,
-            successRate: isFinite(updatedSuccessRate) ? updatedSuccessRate : (prev.successRate || 0),
-            executionHistory: updatedHistory,
-          };
-
-          const userId = prev?.ownerId || user?.wallet?.address || user?.id || 'anonymous';
-          try {
-            lsUpsertWorkflow(userId, updated);
-          } catch (e) {
-            console.error('Failed to persist workflow run history:', e);
-          }
-          return updated;
-        });
-        setIsRunning(false);
-      }, 2000);
+        const userId = prev?.ownerId || user?.wallet?.address || user?.id || 'anonymous';
+        try {
+          lsUpsertWorkflow(userId, updated);
+        } catch (e) {
+          console.error('Failed to persist workflow run history:', e);
+        }
+        return updated;
+      });
     } catch (error) {
       console.error('Error running workflow:', error);
       alert('Failed to run workflow');
+    } finally {
       setIsRunning(false);
     }
   };
@@ -222,8 +299,8 @@ export default function WorkflowPage({ params }) {
               <ArrowLeft className="w-5 h-5" />
             </Link>
             <div>
-              <h1 className="text-3xl font-bold text-foreground">{workflow.name}</h1>
-              <p className="text-foreground/70 mt-1">{workflow.description}</p>
+              <h1 className="text-3xl font-bold text-foreground">{editableName || workflow.name}</h1>
+              <p className="text-foreground/70 mt-1">{editableDescription || workflow.description}</p>
             </div>
           </div>
           <div className="flex items-center space-x-3">
@@ -233,7 +310,7 @@ export default function WorkflowPage({ params }) {
               className="flex items-center space-x-2 px-4 py-2 bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white rounded-lg transition-colors"
             >
               <Play className="w-4 h-4" />
-              <span>Run Once</span>
+              <span>{isRunning ? 'Running...' : 'Run Once'}</span>
             </button>
             <button
               onClick={handleToggleWorkflow}
@@ -317,7 +394,7 @@ export default function WorkflowPage({ params }) {
 
         {/* Tabs */}
         <div className="flex space-x-1 mb-8">
-          {['overview', 'blocks', 'history', 'settings'].map((tab) => (
+          {['overview', 'analysis', 'blocks', 'history', 'settings'].map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
@@ -363,7 +440,7 @@ export default function WorkflowPage({ params }) {
                 {((workflow.executionHistory ?? []).length === 0) ? (
                   <p className="text-sm text-foreground/60 italic">No recent activity.</p>
                 ) : (
-                  (workflow.executionHistory ?? []).map((execution, index) => (
+                  (workflow.executionHistory ?? []).slice(0, 6).map((execution, index) => (
                     <div key={index} className="flex items-center justify-between">
                       <div className="flex items-center space-x-3">
                         {execution.status === 'success' ? (
@@ -372,7 +449,7 @@ export default function WorkflowPage({ params }) {
                           <AlertCircle className="w-4 h-4 text-red-500" />
                         )}
                         <div>
-                          <p className="text-sm text-foreground">{execution.result}</p>
+                          <p className="text-sm text-foreground">{shorten(execution.result)}</p>
                           <p className="text-xs text-foreground/70">{execution.timestamp}</p>
                         </div>
                       </div>
@@ -382,6 +459,40 @@ export default function WorkflowPage({ params }) {
                 )}
               </div>
             </div>
+          </div>
+        )}
+
+        {activeTab === 'analysis' && (
+          <div className="workflow-node p-6">
+            <h3 className="text-lg font-semibold text-foreground mb-4">AI Analysis</h3>
+            {(() => {
+              const ai = normalizeAI(workflow.lastAIAnalysis);
+              if (!ai) return <p className="text-sm text-foreground/60">No AI analysis yet. Run the workflow to generate one.</p>;
+              return (
+                <div className="space-y-4">
+                  <div>
+                    <p className="text-sm font-medium text-foreground mb-1">Explanation</p>
+                    <p className="text-sm text-foreground/80 whitespace-pre-line">{ai.explanation || ai.rawResponse || '—'}</p>
+                  </div>
+                  {(ai.insights?.length > 0) && (
+                    <div>
+                      <p className="text-sm font-medium text-foreground mb-1">Insights</p>
+                      <ul className="list-disc list-inside text-sm text-foreground/80 space-y-1">
+                        {ai.insights.slice(0,5).map((it, i) => (<li key={i}>{it}</li>))}
+                      </ul>
+                    </div>
+                  )}
+                  {(ai.recommendations?.length > 0) && (
+                    <div>
+                      <p className="text-sm font-medium text-foreground mb-1">Recommendations</p>
+                      <ul className="list-disc list-inside text-sm text-foreground/80 space-y-1">
+                        {ai.recommendations.slice(0,5).map((it, i) => (<li key={i}>{it}</li>))}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
           </div>
         )}
 
@@ -502,6 +613,15 @@ export default function WorkflowPage({ params }) {
 function BlockExecutionCard({ block, index }) {
   const blockType = blockTypes[block.type];
   const Icon = blockType?.icon;
+  const formatConfigValue = (key, value) => {
+    if (typeof value !== 'string') return String(value ?? '');
+    // Shorten long hex/addresses and long strings for display
+    const isHex = value.startsWith('0x');
+    if ((isHex && value.length > 26) || value.length > 48) {
+      return `${value.slice(0, 12)}...${value.slice(-10)}`;
+    }
+    return value;
+  };
 
   return (
     <div className="workflow-node p-6">
@@ -542,7 +662,9 @@ function BlockExecutionCard({ block, index }) {
           {Object.entries(block.config).map(([key, value]) => (
             <div key={key}>
               <p className="text-xs text-foreground/70 capitalize">{key.replace(/([A-Z])/g, ' $1')}</p>
-              <p className="text-sm text-foreground font-mono">{value}</p>
+              <p className="text-sm text-foreground font-mono break-all" title={String(value ?? '')}>
+                {formatConfigValue(key, value)}
+              </p>
             </div>
           ))}
         </div>

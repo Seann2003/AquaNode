@@ -1,6 +1,5 @@
 import { SuiClient, getFullnodeUrl } from '@mysten/sui/client';
 import { Ed25519Keypair } from '@mysten/sui/keypairs/ed25519';
-import { TransactionBlock } from '@mysten/sui/transactions';
 import { generateNonce, generateRandomness, getExtendedEphemeralPublicKey, jwtToAddress } from '@mysten/sui/zklogin';
 
 class SuiService {
@@ -128,19 +127,39 @@ class SuiService {
 
   async getWalletTransactions(address, limit = 10, transactionType = 'All') {
     try {
-      const transactions = await this.client.queryTransactionBlocks({
-        filter: { FromOrToAddress: { addr: address } },
-        limit,
-        order: 'descending',
-        options: {
-          showInput: true,
-          showEffects: true,
-          showEvents: true,
-          showObjectChanges: true,
-        },
-      });
+      const options = {
+        showInput: true,
+        showEffects: true,
+        showEvents: true,
+        showObjectChanges: true,
+      };
 
-      return transactions.data.map(tx => ({
+      const [fromRes, toRes] = await Promise.all([
+        this.client.queryTransactionBlocks({
+          filter: { FromAddress: address },
+          limit,
+          order: 'descending',
+          options,
+        }),
+        this.client.queryTransactionBlocks({
+          filter: { ToAddress: address },
+          limit,
+          order: 'descending',
+          options,
+        }),
+      ]);
+
+      const combined = [...(fromRes?.data || []), ...(toRes?.data || [])];
+      // Dedupe by digest and sort by timestampMs desc
+      const seen = new Set();
+      const deduped = combined.filter(tx => {
+        if (seen.has(tx.digest)) return false;
+        seen.add(tx.digest);
+        return true;
+      });
+      deduped.sort((a, b) => (parseInt(b.timestampMs || 0) - parseInt(a.timestampMs || 0)));
+
+      return deduped.slice(0, limit).map(tx => ({
         digest: tx.digest,
         timestamp: tx.timestampMs,
         sender: tx.transaction?.data?.sender,
@@ -150,8 +169,8 @@ class SuiService {
         changes: tx.objectChanges || [],
       }));
     } catch (error) {
-      console.error('Failed to get wallet transactions:', error);
-      throw error;
+      console.error('Failed to get wallet transactions (Sui):', error);
+      return [];
     }
   }
 
@@ -236,91 +255,15 @@ class SuiService {
 
   // Staking Operations
   async stakeTokens(config, userAddress, privateKey) {
-    try {
-      const { tokenAddress, amount, validator, autoCompound } = config;
-      
-      const tx = new TransactionBlock();
-      
-      // Get coins to stake
-      const coins = await this.client.getCoins({
-        owner: userAddress,
-        coinType: tokenAddress,
-      });
-
-      if (coins.data.length === 0) {
-        throw new Error('No coins available for staking');
-      }
-
-      // Merge coins if needed
-      const coinToStake = coins.data[0];
-      if (coins.data.length > 1) {
-        tx.mergeCoins(coinToStake.coinObjectId, coins.data.slice(1).map(c => c.coinObjectId));
-      }
-
-      // Split the exact amount to stake
-      const stakeAmount = tx.splitCoins(coinToStake.coinObjectId, [tx.pure(amount * 1e9)]);
-
-      // Add staking transaction
-      tx.moveCall({
-        target: '0x3::sui_system::request_add_stake',
-        arguments: [
-          tx.object('0x5'), // SUI_SYSTEM_STATE_OBJECT_ID
-          stakeAmount,
-          tx.pure(validator),
-        ],
-      });
-
-      // Execute transaction
-      const keypair = Ed25519Keypair.fromSecretKey(privateKey);
-      const result = await this.client.signAndExecuteTransactionBlock({
-        signer: keypair,
-        transactionBlock: tx,
-      });
-
-      return {
-        digest: result.digest,
-        status: result.effects?.status?.status,
-        gasUsed: result.effects?.gasUsed,
-      };
-    } catch (error) {
-      console.error('Staking failed:', error);
-      throw error;
-    }
+    // Not implemented in client: requires signer and up-to-date Sui SDK tx API.
+    // Keep method to satisfy interface; throw to indicate unsupported.
+    throw new Error('Sui staking is not implemented in this client build');
   }
 
   // Swapping Operations
   async swapTokens(config, userAddress, privateKey) {
-    try {
-      const { fromToken, toToken, amount, slippage, dex } = config;
-      
-      // This would integrate with DEX protocols like Cetus, Turbos, etc.
-      // For now, return a mock implementation
-      const tx = new TransactionBlock();
-      
-      // Get coins to swap
-      const coins = await this.client.getCoins({
-        owner: userAddress,
-        coinType: fromToken,
-      });
-
-      if (coins.data.length === 0) {
-        throw new Error('No coins available for swapping');
-      }
-
-      // This is a simplified example - real implementation would depend on the specific DEX
-      const result = {
-        digest: 'mock_swap_digest',
-        status: 'success',
-        fromAmount: amount,
-        toAmount: amount * 0.99, // Mock exchange rate
-        slippageUsed: slippage,
-      };
-
-      return result;
-    } catch (error) {
-      console.error('Swap failed:', error);
-      throw error;
-    }
+    // Not implemented in client: requires signer and DEX integration.
+    throw new Error('Sui swap is not implemented in this client build');
   }
 
   // Helper Methods
