@@ -1,10 +1,12 @@
 import BlockchainService from './blockchainService';
 import EmailService from './emailService';
+import TheGraphService from './theGraphService';
 
 class WorkflowEngine {
   constructor() {
     this.blockchainService = new BlockchainService();
     this.emailService = new EmailService();
+    this.theGraphService = new TheGraphService();
     this.executionContext = {};
     this.isRunning = false;
   }
@@ -172,6 +174,38 @@ class WorkflowEngine {
           break;
         case 'sendEmail':
           result = await this.executeSendEmailBlock(block, context);
+          break;
+          
+        case 'balancesByAddress':
+          result = await this.executeBalancesByAddressBlock(block, context);
+          break;
+          
+        case 'transferEvents':
+          result = await this.executeTransferEventsBlock(block, context);
+          break;
+          
+        case 'tokenHolders':
+          result = await this.executeTokenHoldersBlock(block, context);
+          break;
+          
+        case 'tokenMetadata':
+          result = await this.executeTokenMetadataBlock(block, context);
+          break;
+          
+        case 'liquidityPools':
+          result = await this.executeLiquidityPoolsBlock(block, context);
+          break;
+          
+        case 'swapEvents':
+          result = await this.executeSwapEventsBlock(block, context);
+          break;
+          
+        case 'nftActivities':
+          result = await this.executeNFTActivitiesBlock(block, context);
+          break;
+          
+        case 'nftCollection':
+          result = await this.executeNFTCollectionBlock(block, context);
           break;
           
         default:
@@ -570,6 +604,341 @@ class WorkflowEngine {
       case 'aiExplanation':
         if (!block.config.prompt) {
           errors.push(`Block ${blockNum}: AI prompt is required`);
+        }
+        break;
+    }
+  }
+
+  // The Graph API block execution methods
+  async executeBalancesByAddressBlock(block, context) {
+    const { address, networkId, limit, page } = block.config;
+    
+    if (!address) {
+      throw new Error('Address is required');
+    }
+
+    try {
+      const result = await this.theGraphService.getBalancesByAddress(
+        address,
+        networkId || 'mainnet',
+        limit || 10,
+        page || 1
+      );
+
+      return {
+        success: true,
+        data: result.data,
+        metadata: {
+          address,
+          networkId: networkId || 'mainnet',
+          limit: limit || 10,
+          page: page || 1,
+          totalResults: result.data?.length || 0
+        }
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: error.message
+      };
+    }
+  }
+
+  async executeTransferEventsBlock(block, context) {
+    const { networkId, startTime, endTime, orderBy, orderDirection, limit, page } = block.config;
+
+    try {
+      const result = await this.theGraphService.getTransferEvents(
+        networkId || 'mainnet',
+        startTime || 0,
+        endTime || 9999999999,
+        orderBy || 'timestamp',
+        orderDirection || 'desc',
+        limit || 10,
+        page || 1
+      );
+
+      return {
+        success: true,
+        data: result.data,
+        metadata: {
+          networkId: networkId || 'mainnet',
+          startTime: startTime || 0,
+          endTime: endTime || 9999999999,
+          orderBy: orderBy || 'timestamp',
+          orderDirection: orderDirection || 'desc',
+          limit: limit || 10,
+          page: page || 1,
+          totalResults: result.data?.length || 0
+        }
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: error.message
+      };
+    }
+  }
+
+  async executeTokenHoldersBlock(block, context) {
+    const { contract, networkId, orderBy, orderDirection, limit, page } = block.config;
+    
+    if (!contract) {
+      throw new Error('Token contract address is required');
+    }
+
+    try {
+      const result = await this.theGraphService.getTokenHolders(
+        contract,
+        networkId || 'mainnet',
+        orderBy || 'value',
+        orderDirection || 'desc',
+        limit || 10,
+        page || 1
+      );
+
+      return {
+        success: true,
+        data: result.data,
+        metadata: {
+          contract,
+          networkId: networkId || 'mainnet',
+          orderBy: orderBy || 'value',
+          orderDirection: orderDirection || 'desc',
+          limit: limit || 10,
+          page: page || 1,
+          totalResults: result.data?.length || 0
+        }
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: error.message
+      };
+    }
+  }
+
+  async executeTokenMetadataBlock(block, context) {
+    const { contract, networkId } = block.config;
+    
+    if (!contract) {
+      throw new Error('Token contract address is required');
+    }
+
+    try {
+      const result = await this.theGraphService.getTokenMetadata(
+        contract,
+        networkId || 'mainnet'
+      );
+
+      return {
+        success: true,
+        data: result.data,
+        metadata: {
+          contract,
+          networkId: networkId || 'mainnet'
+        }
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: error.message
+      };
+    }
+  }
+
+  async executeLiquidityPoolsBlock(block, context) {
+    const { networkId, limit, page } = block.config;
+
+    try {
+      const result = await this.theGraphService.getLiquidityPools(
+        networkId || 'mainnet',
+        limit || 10,
+        page || 1
+      );
+
+      return {
+        success: true,
+        data: result.data,
+        metadata: {
+          networkId: networkId || 'mainnet',
+          limit: limit || 10,
+          page: page || 1,
+          totalResults: result.data?.length || 0
+        }
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: error.message
+      };
+    }
+  }
+
+  async executeSwapEventsBlock(block, context) {
+    const { networkId, startTime, endTime, orderBy, orderDirection, limit, page } = block.config;
+
+    try {
+      const result = await this.theGraphService.getSwapEvents(
+        networkId || 'mainnet',
+        startTime || 0,
+        endTime || 9999999999,
+        orderBy || 'timestamp',
+        orderDirection || 'desc',
+        limit || 10,
+        page || 1
+      );
+
+      return {
+        success: true,
+        data: result.data,
+        metadata: {
+          networkId: networkId || 'mainnet',
+          startTime: startTime || 0,
+          endTime: endTime || 9999999999,
+          orderBy: orderBy || 'timestamp',
+          orderDirection: orderDirection || 'desc',
+          limit: limit || 10,
+          page: page || 1,
+          totalResults: result.data?.length || 0
+        }
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: error.message
+      };
+    }
+  }
+
+  async executeNFTActivitiesBlock(block, context) {
+    const { networkId, startTime, endTime, orderBy, orderDirection, limit, page } = block.config;
+
+    try {
+      const result = await this.theGraphService.getNFTActivities(
+        networkId || 'mainnet',
+        startTime || 0,
+        endTime || 9999999999,
+        orderBy || 'timestamp',
+        orderDirection || 'desc',
+        limit || 10,
+        page || 1
+      );
+
+      return {
+        success: true,
+        data: result.data,
+        metadata: {
+          networkId: networkId || 'mainnet',
+          startTime: startTime || 0,
+          endTime: endTime || 9999999999,
+          orderBy: orderBy || 'timestamp',
+          orderDirection: orderDirection || 'desc',
+          limit: limit || 10,
+          page: page || 1,
+          totalResults: result.data?.length || 0
+        }
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: error.message
+      };
+    }
+  }
+
+  async executeNFTCollectionBlock(block, context) {
+    const { contract, networkId } = block.config;
+    
+    if (!contract) {
+      throw new Error('NFT contract address is required');
+    }
+
+    try {
+      const result = await this.theGraphService.getNFTCollection(
+        contract,
+        networkId || 'mainnet'
+      );
+
+      return {
+        success: true,
+        data: result.data,
+        metadata: {
+          contract,
+          networkId: networkId || 'mainnet'
+        }
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: error.message
+      };
+    }
+  }
+
+  validateBlockConfig(block, errors, index) {
+    const blockNum = index + 1;
+    
+    switch (block.type) {
+      case 'walletBalance':
+      case 'walletTransaction':
+      case 'walletNFT':
+        if (!block.config.walletAddress) {
+          errors.push(`Block ${blockNum}: Wallet address is required`);
+        }
+        if (!block.config.chain) {
+          errors.push(`Block ${blockNum}: Chain selection is required`);
+        }
+        break;
+        
+      case 'tokenInfo':
+        if (!block.config.tokenAddress) {
+          errors.push(`Block ${blockNum}: Token address is required`);
+        }
+        if (!block.config.chain) {
+          errors.push(`Block ${blockNum}: Chain selection is required`);
+        }
+        break;
+        
+      case 'conditional':
+        if (!block.config.condition || !block.config.value || !block.config.field) {
+          errors.push(`Block ${blockNum}: Condition, value, and field are required`);
+        }
+        break;
+        
+      case 'stake':
+      case 'swap':
+        if (!block.config.chain) {
+          errors.push(`Block ${blockNum}: Chain selection is required`);
+        }
+        if (!block.config.amount) {
+          errors.push(`Block ${blockNum}: Amount is required`);
+        }
+        break;
+        
+      case 'aiExplanation':
+        if (!block.config.prompt) {
+          errors.push(`Block ${blockNum}: AI prompt is required`);
+        }
+        break;
+        
+      // The Graph API blocks validation
+      case 'balancesByAddress':
+        if (!block.config.address) {
+          errors.push(`Block ${blockNum}: Address is required`);
+        }
+        break;
+        
+      case 'tokenHolders':
+      case 'tokenMetadata':
+        if (!block.config.contract) {
+          errors.push(`Block ${blockNum}: Token contract address is required`);
+        }
+        break;
+        
+      case 'nftCollection':
+        if (!block.config.contract) {
+          errors.push(`Block ${blockNum}: NFT contract address is required`);
         }
         break;
     }

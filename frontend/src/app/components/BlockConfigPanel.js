@@ -92,6 +92,60 @@ const configSchemas = {
     { key: 'interval', label: 'Interval (seconds)', type: 'number', default: 5, min: 5 },
     { key: 'enabled', label: 'Enabled', type: 'checkbox', default: true },
     { key: 'maxRuns', label: 'Max Runs (0 = unlimited)', type: 'number', default: 0 }
+  ],
+  balancesByAddress: [
+    { key: 'address', label: 'Wallet Address', type: 'text', required: true },
+    { key: 'networkId', label: 'Network ID', type: 'select', options: ['mainnet', 'polygon', 'arbitrum', 'optimism'], default: 'mainnet' },
+    { key: 'limit', label: 'Limit', type: 'number', default: 10, max: 100 },
+    { key: 'page', label: 'Page', type: 'number', default: 1, min: 1 }
+  ],
+  transferEvents: [
+    { key: 'networkId', label: 'Network ID', type: 'select', options: ['mainnet', 'polygon', 'arbitrum', 'optimism'], default: 'mainnet' },
+    { key: 'startTime', label: 'Start Time (timestamp)', type: 'number', default: 0 },
+    { key: 'endTime', label: 'End Time (timestamp)', type: 'number', default: 9999999999 },
+    { key: 'orderBy', label: 'Order By', type: 'select', options: ['timestamp', 'block_num'], default: 'timestamp' },
+    { key: 'orderDirection', label: 'Order Direction', type: 'select', options: ['desc', 'asc'], default: 'desc' },
+    { key: 'limit', label: 'Limit', type: 'number', default: 10, max: 100 },
+    { key: 'page', label: 'Page', type: 'number', default: 1, min: 1 }
+  ],
+  tokenHolders: [
+    { key: 'contract', label: 'Token Contract Address', type: 'text', required: true },
+    { key: 'networkId', label: 'Network ID', type: 'select', options: ['mainnet', 'polygon', 'arbitrum', 'optimism'], default: 'mainnet' },
+    { key: 'orderBy', label: 'Order By', type: 'select', options: ['value', 'amount'], default: 'value' },
+    { key: 'orderDirection', label: 'Order Direction', type: 'select', options: ['desc', 'asc'], default: 'desc' },
+    { key: 'limit', label: 'Limit', type: 'number', default: 10, max: 100 },
+    { key: 'page', label: 'Page', type: 'number', default: 1, min: 1 }
+  ],
+  tokenMetadata: [
+    { key: 'contract', label: 'Token Contract Address', type: 'text', required: true },
+    { key: 'networkId', label: 'Network ID', type: 'select', options: ['mainnet', 'polygon', 'arbitrum', 'optimism'], default: 'mainnet' }
+  ],
+  liquidityPools: [
+    { key: 'networkId', label: 'Network ID', type: 'select', options: ['mainnet', 'polygon', 'arbitrum', 'optimism'], default: 'mainnet' },
+    { key: 'limit', label: 'Limit', type: 'number', default: 10, max: 100 },
+    { key: 'page', label: 'Page', type: 'number', default: 1, min: 1 }
+  ],
+  swapEvents: [
+    { key: 'networkId', label: 'Network ID', type: 'select', options: ['mainnet', 'polygon', 'arbitrum', 'optimism'], default: 'mainnet' },
+    { key: 'startTime', label: 'Start Time (timestamp)', type: 'number', default: 0 },
+    { key: 'endTime', label: 'End Time (timestamp)', type: 'number', default: 9999999999 },
+    { key: 'orderBy', label: 'Order By', type: 'select', options: ['timestamp', 'block_num'], default: 'timestamp' },
+    { key: 'orderDirection', label: 'Order Direction', type: 'select', options: ['desc', 'asc'], default: 'desc' },
+    { key: 'limit', label: 'Limit', type: 'number', default: 10, max: 100 },
+    { key: 'page', label: 'Page', type: 'number', default: 1, min: 1 }
+  ],
+  nftActivities: [
+    { key: 'networkId', label: 'Network ID', type: 'select', options: ['mainnet', 'polygon', 'arbitrum', 'optimism'], default: 'mainnet' },
+    { key: 'startTime', label: 'Start Time (timestamp)', type: 'number', default: 0 },
+    { key: 'endTime', label: 'End Time (timestamp)', type: 'number', default: 9999999999 },
+    { key: 'orderBy', label: 'Order By', type: 'select', options: ['timestamp', 'block_num'], default: 'timestamp' },
+    { key: 'orderDirection', label: 'Order Direction', type: 'select', options: ['desc', 'asc'], default: 'desc' },
+    { key: 'limit', label: 'Limit', type: 'number', default: 10, max: 100 },
+    { key: 'page', label: 'Page', type: 'number', default: 1, min: 1 }
+  ],
+  nftCollection: [
+    { key: 'contract', label: 'NFT Contract Address', type: 'text', required: true },
+    { key: 'networkId', label: 'Network ID', type: 'select', options: ['mainnet', 'polygon', 'arbitrum', 'optimism'], default: 'mainnet' }
   ]
 };
 
@@ -103,9 +157,23 @@ export default function BlockConfigPanel({ block, onUpdate, onClose }) {
   const schema = configSchemas[block.type] || [];
 
   useEffect(() => {
+    console.log('block', block);
     setConfig(block.config || {});
     setHasChanges(false);
-  }, [block]);
+    if (block.type !== 'walletBalance') return;
+    const network = config.network || 'mainnet';
+    if (network !== 'mainnet' && config.tokenType === 'Specific Token') {
+      setConfig(prev => ({ ...prev, tokenType: 'All Tokens' }));
+      setHasChanges(true);
+    }
+    if (network !== 'mainnet' || config.tokenType !== 'Specific Token') {
+      if (config.tokenAddress) {
+        setConfig(prev => ({ ...prev, tokenAddress: '' }));
+        setHasChanges(true);
+      }
+    }
+  }, [block, block.type, config.network, config.tokenType, config.tokenAddress]);
+
 
   const handleConfigChange = (key, value) => {
     setConfig(prev => ({ ...prev, [key]: value }));
@@ -134,20 +202,6 @@ export default function BlockConfigPanel({ block, onUpdate, onClose }) {
     return Object.entries(field.conditional).every(([k, v]) => config[k] === v);
   };
 
-  useEffect(() => {
-    if (block.type !== 'walletBalance') return;
-    const network = config.network || 'mainnet';
-    if (network !== 'mainnet' && config.tokenType === 'Specific Token') {
-      setConfig(prev => ({ ...prev, tokenType: 'All Tokens' }));
-      setHasChanges(true);
-    }
-    if (network !== 'mainnet' || config.tokenType !== 'Specific Token') {
-      if (config.tokenAddress) {
-        setConfig(prev => ({ ...prev, tokenAddress: '' }));
-        setHasChanges(true);
-      }
-    }
-  }, [block.type, config.network, config.tokenType]);
 
   return (
     <div className="h-full flex flex-col">

@@ -114,6 +114,70 @@ export const blockTypes = {
     category: 'Config',
     color: 'bg-gray-500',
     description: 'Schedule workflow execution (5 seconds interval)'
+  },
+  balancesByAddress: {
+    id: 'balancesByAddress',
+    name: 'Balances by Address',
+    icon: Wallet,
+    category: 'Token',
+    color: 'bg-cyan-500',
+    description: 'Get token balances for an address via The Graph'
+  },
+  transferEvents: {
+    id: 'transferEvents',
+    name: 'Transfer Events',
+    icon: TrendingUp,
+    category: 'Token',
+    color: 'bg-cyan-500',
+    description: 'Get token transfer events via The Graph'
+  },
+  tokenHolders: {
+    id: 'tokenHolders',
+    name: 'Token Holders',
+    icon: Coins,
+    category: 'Token',
+    color: 'bg-cyan-500',
+    description: 'Get token holders for a contract via The Graph'
+  },
+  tokenMetadata: {
+    id: 'tokenMetadata',
+    name: 'Token Metadata',
+    icon: Coins,
+    category: 'Token',
+    color: 'bg-cyan-500',
+    description: 'Get token metadata via The Graph'
+  },
+  liquidityPools: {
+    id: 'liquidityPools',
+    name: 'Liquidity Pools',
+    icon: TrendingUp,
+    category: 'DeFi',
+    color: 'bg-cyan-500',
+    description: 'Get liquidity pools data via The Graph'
+  },
+  swapEvents: {
+    id: 'swapEvents',
+    name: 'Swap Events',
+    icon: TrendingUp,
+    category: 'DeFi',
+    color: 'bg-cyan-500',
+    description: 'Get swap events data via The Graph'
+  },
+  nftActivities: {
+    id: 'nftActivities',
+    name: 'NFT Activities',
+    icon: Coins,
+    category: 'Token',
+    color: 'bg-purple-600',
+    description: 'Get NFT activities and transfers via The Graph'
+  },
+  nftCollection: {
+    id: 'nftCollection',
+    name: 'NFT Collection',
+    icon: Coins,
+    category: 'Token',
+    color: 'bg-purple-600',
+    description: 'Get NFT collection metadata via The Graph'
   }
 };
 

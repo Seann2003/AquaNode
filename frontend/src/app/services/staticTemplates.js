@@ -48,6 +48,76 @@ export const STATIC_TEMPLATES = [
     isActive: true
   },
   {
+    id: 'template-graph-api',
+    name: 'The Graph API Token Analysis',
+    description: 'Comprehensive token analysis using The Graph API endpoints',
+    chains: ['Ethereum'],
+    blocks: [
+      {
+        id: 'token-metadata-1',
+        type: 'tokenMetadata',
+        name: 'Get Token Metadata',
+        config: {
+          contract: '0xc944e90c64b2c07662a292be6244bdf05cda44a7',
+          networkId: 'mainnet'
+        },
+        position: { x: 100, y: 100 }
+      },
+      {
+        id: 'token-holders-1',
+        type: 'tokenHolders',
+        name: 'Get Top Token Holders',
+        config: {
+          contract: '0xc944e90c64b2c07662a292be6244bdf05cda44a7',
+          networkId: 'mainnet',
+          orderBy: 'value',
+          orderDirection: 'desc',
+          limit: 10,
+          page: 1
+        },
+        position: { x: 100, y: 220 }
+      },
+      {
+        id: 'transfer-events-1',
+        type: 'transferEvents',
+        name: 'Recent Transfer Events',
+        config: {
+          networkId: 'mainnet',
+          startTime: 0,
+          endTime: 9999999999,
+          orderBy: 'timestamp',
+          orderDirection: 'desc',
+          limit: 10,
+          page: 1
+        },
+        position: { x: 100, y: 340 }
+      },
+      {
+        id: 'liquidity-pools-1',
+        type: 'liquidityPools',
+        name: 'Get Liquidity Pools',
+        config: {
+          networkId: 'mainnet',
+          limit: 10,
+          page: 1
+        },
+        position: { x: 100, y: 460 }
+      },
+      {
+        id: 'ai-analysis-1',
+        type: 'aiExplanation',
+        name: 'AI Token Analysis',
+        config: {
+          prompt: 'Analyze the token metadata, holder distribution, recent transfers, and liquidity pools. Provide insights on token health, distribution patterns, and market activity.',
+          includeContext: true
+        },
+        position: { x: 100, y: 580 }
+      }
+    ],
+    category: 'DeFi',
+    isActive: true
+  },
+  {
     id: 'template-2',
     name: 'Token Research & Conditional Swap',
     description: 'Research token info, check wallet balance, and conditionally swap',
