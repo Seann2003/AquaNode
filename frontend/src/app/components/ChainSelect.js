@@ -79,12 +79,16 @@ export function NetworkSelect({ value, onChange, className = "" }) {
 
 // NetworkIdSelect: shows EVM network ids with logos and capitalized labels
 export function NetworkIdSelect({ value, onChange, className = "" }) {
+  // Token API supported EVM network_ids and friendly names
   const idToName = {
-    mainnet: 'Ethereum',
-    sepolia: 'Sepolia',
-    polygon: 'Polygon',
-    arbitrum: 'Arbitrum',
-    optimism: 'Optimism',
+    'mainnet': 'Ethereum',
+    'arbitrum-one': 'Arbitrum One',
+    'avalanche': 'Avalanche',
+    'base': 'Base',
+    'bsc': 'BNB Smart Chain',
+    'matic': 'Polygon',
+    'optimism': 'Optimism',
+    'unichain': 'Unichain',
   };
   const ids = Object.keys(idToName);
 

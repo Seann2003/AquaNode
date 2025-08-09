@@ -650,7 +650,7 @@ class WorkflowEngine {
   }
 
   async executeTransferEventsBlock(block, context) {
-    const { networkId, startTime, endTime, orderBy, orderDirection, limit, page } = block.config;
+    const { networkId, startTime, endTime, orderBy, orderDirection, limit, page, from, to, contract, transactionId, timePreset } = block.config;
 
     try {
       const result = await this.theGraphService.getTransferEvents(
@@ -660,7 +660,8 @@ class WorkflowEngine {
         orderBy || 'timestamp',
         orderDirection || 'desc',
         limit || 10,
-        page || 1
+        page || 1,
+        { from, to, contract, transaction_id: transactionId }
       );
 
       return {
@@ -674,6 +675,8 @@ class WorkflowEngine {
           orderDirection: orderDirection || 'desc',
           limit: limit || 10,
           page: page || 1,
+          from, to, contract, transactionId,
+          timePreset: timePreset || 'Last 24h',
           totalResults: result.data?.length || 0
         }
       };

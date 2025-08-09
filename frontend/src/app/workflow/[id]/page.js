@@ -111,7 +111,19 @@ export default function WorkflowPage({ params }) {
   };
 
   const networkIdToName = (id) => {
-    const map = { mainnet: 'Ethereum', sepolia: 'Sepolia', polygon: 'Polygon', arbitrum: 'Arbitrum', optimism: 'Optimism' };
+    const map = {
+      mainnet: 'Ethereum',
+      'arbitrum-one': 'Arbitrum One',
+      avalanche: 'Avalanche',
+      base: 'Base',
+      bsc: 'BNB Smart Chain',
+      matic: 'Polygon',
+      optimism: 'Optimism',
+      unichain: 'Unichain',
+      sepolia: 'Sepolia', // fallback if encountered elsewhere
+      polygon: 'Polygon', // fallback
+      arbitrum: 'Arbitrum', // fallback
+    };
     return map[id] || id;
   };
 
@@ -752,6 +764,33 @@ function BlockExecutionCard({ block, index }) {
                       </li>
                     );
                   })}
+                </ul>
+              </div>
+            );
+          })()}
+        </div>
+      )}
+      {/* Result preview for transferEvents */}
+      {block.type === 'transferEvents' && block.lastResult && (
+        <div className="bg-background/50 rounded-lg p-4 mt-4">
+          <h4 className="text-sm font-medium text-foreground mb-3">Result</h4>
+          {(() => {
+            const res = block.lastResult;
+            const arr = Array.isArray(res?.data?.data) ? res.data.data : (Array.isArray(res?.data) ? res.data : []);
+            if (!arr || arr.length === 0) {
+              return <p className="text-sm text-foreground/60">No transfers found.</p>;
+            }
+            const net = networkIdToName(res?.metadata?.networkId || block.config?.networkId || '');
+            return (
+              <div className="space-y-2">
+                <p className="text-sm text-foreground/70">Network: <span className="text-foreground">{net}</span></p>
+                <ul className="text-sm text-foreground/90 space-y-1">
+                  {arr.slice(0, 5).map((it, idx) => (
+                    <li key={idx} className="flex justify-between">
+                      <span className="truncate mr-2">{(it?.symbol || 'TOKEN')} • {it?.from?.slice(0,6)}… → {it?.to?.slice(0,6)}…</span>
+                      <span className="font-mono">{it?.value ?? it?.amount ?? '0'}</span>
+                    </li>
+                  ))}
                 </ul>
               </div>
             );
