@@ -52,14 +52,14 @@ export const blockTypes = {
     color: 'bg-purple-500',
     description: 'Execute actions based on conditions'
   },
-  tokenHolders: {
-    id: 'tokenHolders',
-    name: 'Token Holders',
-    icon: Coins,
-    category: 'Token',
-    color: 'bg-cyan-500',
-    description: 'Get token holders for a contract via The Graph'
-  },
+  // tokenHolders: {
+  //   id: 'tokenHolders',
+  //   name: 'Token Holders',
+  //   icon: Coins,
+  //   category: 'Token',
+  //   color: 'bg-cyan-500',
+  //   description: 'Get token holders for a contract via The Graph'
+  // },
   tokenMetadata: {
     id: 'tokenMetadata',
     name: 'Token Metadata',
@@ -476,6 +476,7 @@ function BuilderContent() {
           <div className="w-80 bg-card border-l border-border fixed right-0 top-16 h-[calc(100vh-4rem)] z-20 flex flex-col overflow-y-auto">
             <BlockConfigPanel
               block={selectedBlock}
+              allBlocks={workflowBlocks}
               onUpdate={(updates) => handleBlockUpdate(selectedBlock.id, updates)}
               onClose={() => setSelectedBlock(null)}
             />

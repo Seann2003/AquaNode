@@ -123,3 +123,37 @@ export function NetworkIdSelect({ value, onChange, className = "" }) {
     </div>
   );
 }
+
+// CoinSelect: specialized selector for coin symbols with left logo badge
+// It reuses ChainLogo; for unknown symbols it shows a colored circle with first letter
+export function CoinSelect({ value, onChange, options = [], className = "" }) {
+  const normalized = (value || '').toUpperCase();
+  const displayOptions = options.length ? options : ['ETH', 'PEPE', 'SHIB'];
+
+  return (
+    <div className="relative">
+      <select
+        value={value || ''}
+        onChange={(e) => onChange(e.target.value)}
+        className={`w-full pl-12 pr-8 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-foreground appearance-none ${className}`}
+      >
+        <option value="">Select Coin Symbol</option>
+        {displayOptions.map((opt) => (
+          <option key={opt} value={opt.toLowerCase()}>{opt.toUpperCase()}</option>
+        ))}
+      </select>
+
+      {value && (
+        <div className="absolute left-3 top-1/2 transform -translate-y-1/2 pointer-events-none">
+          <ChainLogo chain={normalized} size={20} />
+        </div>
+      )}
+
+      <div className="absolute right-3 top-1/2 transform -translate-y-1/2 pointer-events-none">
+        <svg className="w-4 h-4 text-foreground/70" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+        </svg>
+      </div>
+    </div>
+  );
+}

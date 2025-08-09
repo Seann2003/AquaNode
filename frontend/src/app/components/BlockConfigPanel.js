@@ -7,6 +7,7 @@ import ChainSelect, {
   PriceSourceSelect,
   NetworkSelect,
   NetworkIdSelect,
+  CoinSelect,
 } from './ChainSelect';
 
 // Configuration schemas for different block types
@@ -57,14 +58,24 @@ const configSchemas = {
     { key: 'cc', label: 'Cc (comma-separated)', type: 'text' },
     { key: 'bcc', label: 'Bcc (comma-separated)', type: 'text' },
     { key: 'from', label: 'From (optional, overrides default)', type: 'text' },
-    { key: 'subject', label: 'Subject', type: 'text', required: true },
+    { key: 'subject', label: 'Subject', type: 'text', required: true, default: 'AquaNode – {{WORKFLOW.name}} – Digest' },
     {
       key: 'body',
       label: 'Body (text)',
       type: 'textarea',
       required: true,
+      default: `AquaNode workflow: {{WORKFLOW.name}} (ID: {{WORKFLOW.id}})
+
+Summary:
+{{AI.response.explanation}}
+
+Top insights:
+{{AI.response.insights}}
+
+Recommendations:
+{{AI.response.recommendations}}`,
       placeholder:
-        'You can reference previous results like {{previous.token_info.tokenInfo.symbol}}',
+        'You can reference previous results like {{AI.response.explanation}}',
     },
     { key: 'useHtml', label: 'Body is HTML', type: 'checkbox', default: false },
     {
@@ -466,7 +477,7 @@ const configSchemas = {
   ]
 };
 
-export default function BlockConfigPanel({ block, onUpdate, onClose }) {
+export default function BlockConfigPanel({ block, onUpdate, onClose, allBlocks = [] }) {
   const [config, setConfig] = useState(block.config || {});
   const [hasChanges, setHasChanges] = useState(false);
 
@@ -569,9 +580,42 @@ export default function BlockConfigPanel({ block, onUpdate, onClose }) {
     setHasChanges(false);
   };
 
+  // Helpers for Conditional block UX (define hooks before early returns)
+  const previousBlocks = useMemo(() => {
+    const idx = (allBlocks || []).findIndex((b) => b.id === block.id);
+    return (allBlocks || []).slice(0, idx >= 0 ? idx : 0);
+  }, [allBlocks, block.id]);
+
   if (!blockType) return null;
 
   const Icon = blockType.icon;
+
+  const getPresetsForType = (type) => {
+    switch (type) {
+      case 'balancesByAddress':
+        return [
+          { label: 'Native balance < 0.1', field: 'previous.data.0.value', condition: 'Less Than', value: '0.1' },
+          { label: 'Has at least 1 token', field: 'previous.metadata.totalResults', condition: 'Greater Than', value: '0' },
+        ];
+      case 'transferEvents':
+        return [
+          { label: 'Any transfer > 10,000', field: 'previous.data.0.value', condition: 'Greater Than', value: '10000' },
+          { label: 'From specific address', field: 'previous.data.0.from', condition: 'Contains', value: '0x' },
+        ];
+      case 'swapEvents':
+        return [
+          { label: 'Swap value > 1,000', field: 'previous.data.0.value1', condition: 'Greater Than', value: '1000' },
+          { label: 'Protocol is Uniswap V3', field: 'previous.data.0.protocol', condition: 'Contains', value: 'uniswap_v3' },
+        ];
+      case 'tokenMetadata':
+        return [
+          { label: 'Holders > 10,000', field: 'previous.data.0.holders', condition: 'Greater Than', value: '10000' },
+          { label: 'Decimals == 18', field: 'previous.data.0.decimals', condition: 'Equal To', value: '18' },
+        ];
+      default:
+        return [];
+    }
+  };
 
   const shouldRenderField = (field) => {
     if (block.type === 'tokenInfo') {
@@ -625,6 +669,51 @@ export default function BlockConfigPanel({ block, onUpdate, onClose }) {
       {/* Configuration Form */}
       <div className='flex-1 overflow-y-auto p-4'>
         <div className='space-y-4'>
+          {/* Conditional block helper UI */}
+          {block.type === 'conditional' && (
+            <div className='space-y-3 p-3 rounded border border-border bg-background/50'>
+              <div className='text-sm text-foreground/70'>Quick presets based on previous blocks</div>
+              <div className='space-y-2'>
+                {previousBlocks.length === 0 && (
+                  <div className='text-xs text-foreground/50'>Add a data block before this conditional to enable presets.</div>
+                )}
+                {previousBlocks.map((pb) => (
+                  <div key={pb.id} className='space-y-1'>
+                    <div className='text-xs text-foreground/60'>{pb.name} ({pb.type})</div>
+                    <div className='flex flex-wrap gap-2'>
+                      {getPresetsForType(pb.type).map((p, i) => (
+                        <button
+                          key={i}
+                          type='button'
+                          onClick={() => {
+                            setConfig((prev) => ({ ...prev, field: p.field, condition: p.condition, value: p.value }));
+                            setHasChanges(true);
+                          }}
+                          className='px-2 py-1 text-xs bg-border hover:bg-hover rounded'
+                          title={`${p.field} ${p.condition} ${p.value}`}
+                        >
+                          {p.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div className='pt-2 border-t border-border'>
+                <button
+                  type='button'
+                  className='text-xs px-2 py-1 bg-primary/10 hover:bg-primary/20 rounded'
+                  onClick={() => {
+                    // Simple evaluator preview using lastResult from previous block in local state (if present in runtime UI)
+                    alert('Use Run Once to test the condition against live data.');
+                  }}
+                >
+                  Test condition
+                </button>
+              </div>
+            </div>
+          )}
+
           {schema.map((field) => {
             if (!shouldRenderField(field)) return null;
             return (
@@ -680,6 +769,15 @@ export default function BlockConfigPanel({ block, onUpdate, onClose }) {
                   />
                 )}
 
+                {/* Specialized CoinSelect for tokenInfo coin symbol */}
+                {field.type === 'select' && block.type === 'tokenInfo' && field.key === 'coin' && (
+                  <CoinSelect
+                    value={config[field.key] || field.default || ''}
+                    onChange={(value) => handleConfigChange(field.key, value)}
+                    options={(Array.isArray(field.options) ? field.options : ['eth','pepe','shib']).map(o => o.toUpperCase())}
+                  />
+                )}
+
                 {field.type === 'select' && field.key === 'network' && (
                   <NetworkSelect
                     value={config[field.key] || field.default || ''}
@@ -688,7 +786,7 @@ export default function BlockConfigPanel({ block, onUpdate, onClose }) {
                 )}
 
                 {field.type === 'select' &&
-                  !['chain', 'priceSource', 'network'].includes(field.key) && (
+                  !['chain', 'priceSource', 'network', 'coin'].includes(field.key) && (
                     <select
                       value={config[field.key] || field.default || ''}
                       onChange={(e) =>

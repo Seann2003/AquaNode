@@ -19,6 +19,7 @@ class WorkflowEngine {
     this.isRunning = true;
     this.executionContext = {
       workflowId: workflow.id,
+      workflowName: workflow.name,
       startTime: Date.now(),
       results: {},
       errors: [],
@@ -632,9 +633,16 @@ class WorkflowEngine {
     if (!subject) throw new Error('Email subject is required');
     if (!body) throw new Error('Email body is required');
 
+    // Provide engine + workflow metadata so templates can reference them
+    const extendedContext = {
+      ...context,
+      engine: this,
+      WORKFLOW: { id: context.workflowId, name: context.workflowName },
+    };
+
     const response = await this.emailService.sendEmail(
       { to, cc, bcc, from, subject, body, useHtml, provider, dryRun },
-      context
+      extendedContext
     );
 
     return {

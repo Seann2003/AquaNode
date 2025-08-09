@@ -1,6 +1,50 @@
 // Static templates that don't require MongoDB
 export const STATIC_TEMPLATES = [
   {
+    id: 'gr-template-1',
+    name: 'Daily Portfolio Digest (The Graph + AI)',
+    description: 'Fetch wallet balances, enrich with token metadata, summarize with AI, and email daily.',
+    chains: ['Ethereum'],
+    blocks: [
+      { id: 'balances-1', type: 'balancesByAddress', name: 'Get Balances', config: { address: '', networkId: 'mainnet', limit: 25, page: 1 }, position: { x: 100, y: 100 } },
+      { id: 'metadata-1', type: 'tokenMetadata', name: 'Enrich Top Token', config: { contract: '', networkId: 'mainnet' }, position: { x: 100, y: 220 } },
+      { id: 'ai-1', type: 'aiExplanation', name: 'AI Summary', config: { prompt: 'Summarize balances and notable changes; flag risks and concentration.', includeContext: true }, position: { x: 100, y: 340 } },
+      { id: 'email-1', type: 'sendEmail', name: 'Email Report', config: { to: '', subject: 'Daily Portfolio Digest', body: '[[AI summary here]]', useHtml: false }, position: { x: 100, y: 460 } },
+      { id: 'cron-1', type: 'cronjob', name: 'Schedule Daily', config: { interval: 86400, enabled: true, maxRuns: 0 }, position: { x: 100, y: 580 } }
+    ],
+    category: 'Analysis',
+    isActive: true
+  },
+  {
+    id: 'gr-template-2',
+    name: 'Whale Transfer Alert',
+    description: 'Monitor large token transfers and receive contextual alerts.',
+    chains: ['Ethereum'],
+    blocks: [
+      { id: 'xfer-1', type: 'transferEvents', name: 'Watch Transfers', config: { networkId: 'mainnet', orderBy: 'timestamp', orderDirection: 'desc', limit: 50, page: 1 }, position: { x: 100, y: 100 } },
+      { id: 'cond-1', type: 'conditional', name: 'Large Amount Filter', config: { condition: 'Greater Than', value: '100000', field: 'previous.data.0.value' }, position: { x: 100, y: 220 } },
+      { id: 'md-1', type: 'tokenMetadata', name: 'Token Context', config: { contract: '', networkId: 'mainnet' }, position: { x: 100, y: 340 } },
+      { id: 'ai-2', type: 'aiExplanation', name: 'Explain Significance', config: { prompt: 'Explain the transfer significance and potential implications.', includeContext: true }, position: { x: 100, y: 460 } },
+      { id: 'email-2', type: 'sendEmail', name: 'Send Alert', config: { to: '', subject: 'Whale Transfer Alert', body: '{{previous.ai_explanation.response}}' }, position: { x: 100, y: 580 } }
+    ],
+    category: 'Alerts',
+    isActive: true
+  },
+  {
+    id: 'gr-template-3',
+    name: 'Swap Activity Monitor',
+    description: 'Track Uniswap swaps for a pool/token and notify on spikes.',
+    chains: ['Ethereum'],
+    blocks: [
+      { id: 'swp-1', type: 'swapEvents', name: 'Watch Swaps', config: { networkId: 'mainnet', protocol: 'uniswap_v3', orderBy: 'timestamp', orderDirection: 'desc', limit: 50, page: 1 }, position: { x: 100, y: 100 } },
+      { id: 'cond-2', type: 'conditional', name: 'Volume Spike', config: { condition: 'Greater Than', value: '100000', field: 'previous.data.0.value1' }, position: { x: 100, y: 220 } },
+      { id: 'ai-3', type: 'aiExplanation', name: 'AI Insight', config: { prompt: 'Summarize swap flow and price/volume implications for traders.', includeContext: true }, position: { x: 100, y: 340 } },
+      { id: 'email-3', type: 'sendEmail', name: 'Notify', config: { to: '', subject: 'Swap Activity Spike', body: '{{previous.ai_explanation.response}}' }, position: { x: 100, y: 460 } }
+    ],
+    category: 'Trading',
+    isActive: true
+  },
+  {
     id: 'template-1',
     name: 'Wallet Research & AI Analysis',
     description: 'Research wallet balance and transactions, then get AI explanations',

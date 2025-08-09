@@ -342,9 +342,50 @@ class TheGraphService {
     orderBy = 'timestamp',
     orderDirection = 'desc',
     limit = 10,
-    page = 1
+    page = 1,
+    filters = {}
   ) {
+    // If running in the browser, route through our Next.js API to avoid CORS and keep key server-side
+    if (typeof window !== 'undefined') {
+      const normalized = { ...filters };
+      if (normalized.transaction_id && !normalized.transactionId) {
+        normalized.transactionId = normalized.transaction_id;
+        delete normalized.transaction_id;
+      }
+
+      const response = await fetch('/api/graph/token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'transferEvents',
+          params: {
+            networkId,
+            startTime,
+            endTime,
+            orderBy,
+            orderDirection,
+            limit,
+            page,
+            ...normalized,
+          },
+        }),
+      });
+
+      const result = await response.json();
+      if (!response.ok || !result?.success) {
+        const message = result?.error || `Failed to fetch transfer events (${response.status})`;
+        throw new Error(message);
+      }
+      return result.data;
+    }
+
+    // Server-side direct Token API call
     const endpoint = '/transfers/evm';
+    const serverFilters = { ...filters };
+    if (serverFilters.transactionId && !serverFilters.transaction_id) {
+      serverFilters.transaction_id = serverFilters.transactionId;
+      delete serverFilters.transactionId;
+    }
     const params = {
       network_id: networkId,
       startTime,
@@ -353,7 +394,7 @@ class TheGraphService {
       orderDirection,
       limit,
       page,
-      ...filters
+      ...serverFilters,
     };
 
     return await this.makeRequest(endpoint, params);
@@ -466,9 +507,50 @@ class TheGraphService {
     orderBy = 'timestamp',
     orderDirection = 'desc',
     limit = 10,
-    page = 1
+    page = 1,
+    filters = {}
   ) {
+    // If running in the browser, route through our Next.js API
+    if (typeof window !== 'undefined') {
+      const normalized = { ...filters };
+      if (normalized.transaction_id && !normalized.transactionId) {
+        normalized.transactionId = normalized.transaction_id;
+        delete normalized.transaction_id;
+      }
+
+      const response = await fetch('/api/graph/token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'swapEvents',
+          params: {
+            networkId,
+            startTime,
+            endTime,
+            orderBy,
+            orderDirection,
+            limit,
+            page,
+            ...normalized,
+          },
+        }),
+      });
+
+      const result = await response.json();
+      if (!response.ok || !result?.success) {
+        const message = result?.error || `Failed to fetch swap events (${response.status})`;
+        throw new Error(message);
+      }
+      return result.data;
+    }
+
+    // Server-side direct Token API call
     const endpoint = '/swaps/evm';
+    const serverFilters = { ...filters };
+    if (serverFilters.transactionId && !serverFilters.transaction_id) {
+      serverFilters.transaction_id = serverFilters.transactionId;
+      delete serverFilters.transactionId;
+    }
     const params = {
       network_id: networkId,
       startTime,
@@ -477,7 +559,7 @@ class TheGraphService {
       orderDirection,
       limit,
       page,
-      ...filters
+      ...serverFilters,
     };
 
     return await this.makeRequest(endpoint, params);

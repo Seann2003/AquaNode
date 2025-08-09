@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 
+// Email relay using Resend. Supports dry-run if not configured.
 export async function POST(request) {
   try {
     const {

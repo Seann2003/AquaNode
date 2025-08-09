@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, use as useAwait } from 'react';
+import { useState, useEffect, useCallback, useMemo, use as useAwait } from 'react';
 import Link from 'next/link';
 import {
   Play,
@@ -181,6 +181,19 @@ export default function WorkflowPage({ params }) {
     }
   };
 
+  // Minimal markdown support for bold ( **text** ) and newlines
+  const toHtml = (text) => {
+    if (!text) return '';
+    const esc = String(text)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+    const withBold = esc.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+    return withBold.replace(/\n/g, '<br/>');
+  };
+
   const fetchWorkflow = useCallback(async () => {
     try {
       const userId = user?.wallet?.address || user?.id || 'anonymous';
@@ -242,6 +255,24 @@ export default function WorkflowPage({ params }) {
       setIsRunning(false);
     }
   };
+
+  // Derive The Graph network_ids present in the workflow blocks (no defaults)
+  const graphNetworkIds = useMemo(() => {
+    const supported = new Set([
+      'mainnet', 'arbitrum-one', 'avalanche', 'base', 'bsc', 'matic', 'optimism', 'unichain'
+    ]);
+    const ids = new Set();
+    (workflow?.blocks || []).forEach((b) => {
+      if ([
+        'balancesByAddress', 'transferEvents', 'tokenHolders', 'tokenMetadata',
+        'liquidityPools', 'swapEvents', 'nftActivities', 'nftCollection'
+      ].includes(b.type)) {
+        const id = b?.config?.networkId;
+        if (id && supported.has(id)) ids.add(id);
+      }
+    });
+    return Array.from(ids);
+  }, [workflow]);
 
   const handleRunOnce = async () => {
     if (!workflow) return;
@@ -616,11 +647,14 @@ export default function WorkflowPage({ params }) {
                   <span className='text-foreground/70'>Created:</span>
                   <span className='text-foreground'>{workflow.created}</span>
                 </div>
-                <div className='flex justify-between'>
+                <div className='flex justify-between items-center'>
                   <span className='text-foreground/70'>Chains:</span>
-                  <div className='flex flex-wrap gap-1'>
+                  <div className='flex flex-wrap gap-1 items-center'>
                     {(workflow.chains || []).map((chain) => (
-                      <ChainBadge key={chain} chain={chain} size='xs' />
+                      <ChainBadge key={`c-${chain}`} chain={chain} size='xs' />
+                    ))}
+                    {graphNetworkIds.length > 0 && graphNetworkIds.map((id) => (
+                      <GraphNetworkBadge key={`g-${id}`} networkId={id} size='xs' />
                     ))}
                   </div>
                 </div>
@@ -693,9 +727,10 @@ export default function WorkflowPage({ params }) {
                     <p className='text-sm font-medium text-foreground mb-1'>
                       Explanation
                     </p>
-                    <p className='text-sm text-foreground/80 whitespace-pre-line'>
-                      {ai.explanation || ai.rawResponse || '—'}
-                    </p>
+                    <p
+                      className='text-sm text-foreground/80'
+                      dangerouslySetInnerHTML={{ __html: toHtml(ai.explanation || ai.rawResponse || '—') }}
+                    />
                   </div>
                   {ai.insights?.length > 0 && (
                     <div>
@@ -704,7 +739,7 @@ export default function WorkflowPage({ params }) {
                       </p>
                       <ul className='list-disc list-inside text-sm text-foreground/80 space-y-1'>
                         {ai.insights.slice(0, 5).map((it, i) => (
-                          <li key={i}>{it}</li>
+                          <li key={i} dangerouslySetInnerHTML={{ __html: toHtml(it) }} />
                         ))}
                       </ul>
                     </div>
@@ -716,7 +751,7 @@ export default function WorkflowPage({ params }) {
                       </p>
                       <ul className='list-disc list-inside text-sm text-foreground/80 space-y-1'>
                         {ai.recommendations.slice(0, 5).map((it, i) => (
-                          <li key={i}>{it}</li>
+                          <li key={i} dangerouslySetInnerHTML={{ __html: toHtml(it) }} />
                         ))}
                       </ul>
                     </div>
@@ -1012,6 +1047,69 @@ function BlockExecutionCard({ block, index }) {
                     );
                   })}
                 </ul>
+              </div>
+            );
+          })()}
+        </div>
+      )}
+      {/* Result preview for tokenInfo (Coin Symbol via Uniswap V3) */}
+      {block.type === 'tokenInfo' && block.lastResult && (
+        <div className='bg-background/50 rounded-lg p-4 mt-4'>
+          <h4 className='text-sm font-medium text-foreground mb-3'>Result</h4>
+          {(() => {
+            const r = block.lastResult;
+            if (r?.success === false) {
+              return (
+                <p className='text-sm text-red-500'>
+                  {r?.error || 'Failed to fetch token info'}
+                </p>
+              );
+            }
+            const d = r?.data || {};
+            const netId = (block.config?.networkId || 'mainnet');
+            const price = typeof d.currentPrice === 'number' ? `$${d.currentPrice.toFixed(6)}` : '—';
+            const change = typeof d.priceChange24h === 'number' ? `${d.priceChange24h >= 0 ? '+' : ''}${d.priceChange24h}%` : '—';
+            const volume = typeof d.volume24h === 'number' ? `$${d.volume24h.toLocaleString()}` : '—';
+            const tvl = typeof d.tvl === 'number' ? `$${Math.round(d.tvl).toLocaleString()}` : '—';
+            const pool = d.poolAddress || r?.metadata?.poolAddress;
+            return (
+              <div className='space-y-3'>
+                <div className='flex items-center space-x-2'>
+                  <span className='text-sm text-foreground/70'>Network:</span>
+                  <GraphNetworkBadge networkId={netId} />
+                  <span className='text-sm text-foreground/70 ml-2'>Coin:</span>
+                  <span className='text-sm font-semibold text-foreground'>{r?.coin || (block.config?.coin || '').toUpperCase() || '—'}</span>
+                </div>
+                <div className='grid grid-cols-2 md:grid-cols-3 gap-3 text-sm text-foreground/90'>
+                  <div>
+                    <div className='text-foreground/70'>Pair</div>
+                    <div className='font-mono'>{d.pairName || '—'}</div>
+                  </div>
+                  <div>
+                    <div className='text-foreground/70'>Price</div>
+                    <div className='font-mono'>{price}</div>
+                  </div>
+                  <div>
+                    <div className='text-foreground/70'>24h Change</div>
+                    <div className={`font-mono ${typeof d.priceChange24h === 'number' ? (d.priceChange24h >= 0 ? 'text-green-500' : 'text-red-500') : ''}`}>{change}</div>
+                  </div>
+                  <div>
+                    <div className='text-foreground/70'>24h Volume</div>
+                    <div className='font-mono'>{volume}</div>
+                  </div>
+                  <div>
+                    <div className='text-foreground/70'>TVL</div>
+                    <div className='font-mono'>{tvl}</div>
+                  </div>
+                  <div>
+                    <div className='text-foreground/70'>Fee Tier</div>
+                    <div className='font-mono'>{d.feeTier ?? '—'}</div>
+                  </div>
+                  <div className='col-span-2'>
+                    <div className='text-foreground/70'>Pool</div>
+                    <div className='font-mono break-all'>{pool || '—'}</div>
+                  </div>
+                </div>
               </div>
             );
           })()}
